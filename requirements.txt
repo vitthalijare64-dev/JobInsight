@@ -8,3 +8,13 @@ python-dotenv
 pydantic
 pydantic-settings
 sqlalchemy
+scikit-learn
+xgboost
+spacy
+nltk
+sentence-transformers
+transformers
+torch
+PyMuPDF
+python-docx
+pyarrow
