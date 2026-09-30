@@ -544,10 +544,11 @@ if not cooccurrence.empty:
     pair_count_column = find_column(
         cooccurrence,
         [
-            "cooccurrence_count",
-            "count",
-            "frequency",
-            "jobs",
+           "cooccurrence_count",
+           "job_count",
+           "count",
+           "frequency",
+           "jobs",
         ],
     )
 
