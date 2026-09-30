@@ -1,4 +1,8 @@
+from pathlib import Path
+
+import pandas as pd
 import streamlit as st
+
 
 st.set_page_config(
     page_title="JobInsight",
@@ -6,6 +10,100 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+# -------------------------
+# Paths
+# -------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+
+JOBS_FILE = PROCESSED_DIR / "jobs_normalized.parquet"
+SKILLS_FILE = PROCESSED_DIR / "job_skills_normalized.parquet"
+
+
+# -------------------------
+# Data loading
+# -------------------------
+
+@st.cache_data
+def load_home_metrics():
+    jobs = pd.read_parquet(JOBS_FILE)
+
+    jobs_analyzed = len(jobs)
+
+    # Job roles
+    role_column = None
+    for column in ["normalized_title", "title", "job_title"]:
+        if column in jobs.columns:
+            role_column = column
+            break
+
+    if role_column:
+        job_roles = jobs[role_column].dropna().astype(str).str.strip()
+        job_roles = job_roles[job_roles != ""].nunique()
+    else:
+        job_roles = 0
+
+    # Locations
+    location_column = None
+    for column in [
+        "country_normalized",
+        "country",
+        "location_resolved",
+        "city",
+    ]:
+        if column in jobs.columns:
+            location_column = column
+            break
+
+    if location_column:
+        locations = jobs[location_column].dropna().astype(str).str.strip()
+        locations = locations[locations != ""].nunique()
+    else:
+        locations = 0
+
+    # Unique skills
+    skills_identified = 0
+
+    if SKILLS_FILE.exists():
+        skills = pd.read_parquet(SKILLS_FILE)
+
+        skill_column = None
+
+        for column in [
+            "normalized_skill",
+            "skill",
+            "skill_name",
+            "skills",
+        ]:
+            if column in skills.columns:
+                skill_column = column
+                break
+
+        if skill_column:
+            skill_values = (
+                skills[skill_column]
+                .dropna()
+                .astype(str)
+                .str.strip()
+            )
+
+            skill_values = skill_values[skill_values != ""]
+            skills_identified = skill_values.nunique()
+
+    return (
+        jobs_analyzed,
+        skills_identified,
+        job_roles,
+        locations,
+    )
+
+
+# -------------------------
+# Styling
+# -------------------------
 
 st.markdown(
     """
@@ -62,6 +160,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # -------------------------
 # Sidebar
 # -------------------------
@@ -114,14 +213,33 @@ if page == "🏠 Home":
         unsafe_allow_html=True,
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    # Load real market statistics
+    try:
+        (
+            jobs_analyzed,
+            skills_identified,
+            job_roles,
+            locations,
+        ) = load_home_metrics()
 
-    metrics = [
-        ("—", "Jobs Analyzed"),
-        ("—", "Skills Identified"),
-        ("—", "Job Roles"),
-        ("—", "Locations"),
-    ]
+        metrics = [
+            (f"{jobs_analyzed:,}", "Jobs Analyzed"),
+            (f"{skills_identified:,}", "Skills Identified"),
+            (f"{job_roles:,}", "Job Roles"),
+            (f"{locations:,}", "Locations"),
+        ]
+
+    except Exception as e:
+        st.warning(f"Unable to load homepage statistics: {e}")
+
+        metrics = [
+            ("—", "Jobs Analyzed"),
+            ("—", "Skills Identified"),
+            ("—", "Job Roles"),
+            ("—", "Locations"),
+        ]
+
+    col1, col2, col3, col4 = st.columns(4)
 
     for col, (value, label) in zip(
         [col1, col2, col3, col4],
@@ -149,18 +267,24 @@ if page == "🏠 Home":
             "📊 Explore Market Intelligence",
             use_container_width=True,
         ):
-            st.info("Market Intelligence module will be connected next.")
+            st.info(
+                "Use the Market Intelligence page from the sidebar "
+                "to explore job-market statistics."
+            )
 
     with col2:
         if st.button(
             "📄 Analyze Your Resume",
             use_container_width=True,
         ):
-            st.info("Resume Analyzer will be connected in a later phase.")
+            st.info(
+                "Use the Resume Analyzer page from the sidebar "
+                "to upload and analyze your resume."
+            )
 
     st.markdown("##")
 
-    st.subheader("What JobInsight Will Provide")
+    st.subheader("What JobInsight Provides")
 
     col1, col2, col3 = st.columns(3)
 
@@ -204,6 +328,6 @@ else:
     st.title(page)
 
     st.info(
-        "This module is part of the JobInsight development roadmap. "
-        "We will connect its data, AI models and visualizations step-by-step."
+        "Use the corresponding page from the Streamlit navigation "
+        "to access the full JobInsight module."
     )
