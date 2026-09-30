@@ -1,0 +1,10 @@
+streamlit
+fastapi
+uvicorn[standard]
+pandas
+numpy
+plotly
+python-dotenv
+pydantic
+pydantic-settings
+sqlalchemy
