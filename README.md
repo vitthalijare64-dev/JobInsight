@@ -42,4 +42,6 @@ JobInsight is a research-oriented AI platform designed to combine:
 
 ## Development Status
 
-Phase 1 - Project Foundation
+Core data processing, NLP, machine learning, semantic matching, skill-gap analysis, career recommendations, resume analysis, and Streamlit frontend have been implemented.
+
+The project is currently in the working prototype stage.
