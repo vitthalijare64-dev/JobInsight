@@ -2,46 +2,86 @@
 
 ## AI-Powered Job Market Analytics and Career Recommendation Platform
 
-JobInsight is a research-oriented AI platform designed to combine:
+JobInsight is an AI-powered job market analytics and career recommendation platform that integrates job-market intelligence with candidate-level analysis.
 
-- Job market analytics
+The platform combines job data processing, NLP-based skill extraction, salary intelligence, resume analysis, semantic job matching, skill-gap analysis, and career recommendations into a single workflow.
+
+---
+
+## Key Features
+
+### Job Market Intelligence
+- Job market exploration
+- Country and work-model analysis
+- Experience-level analysis
+- Employment-type analysis
+- Skill demand analysis
+- Skill co-occurrence analysis
+- Salary distribution analysis
+
+### Resume Intelligence
+- PDF and DOCX resume parsing
+- Candidate profile extraction
 - Skill extraction
-- Salary intelligence
-- Resume analysis
-- Resume-job semantic matching
-- Skill-gap analysis
-- Career recommendations
+- Education extraction
+- Experience extraction
+- Certifications and project extraction
 
-## Technology Stack
+### Job Matching
+- Semantic resume-job matching
+- Sentence Transformer embeddings
+- Candidate skill matching
+- Combined semantic and skill-based recommendation scoring
+- Work-model filtering
 
-- Python
-- Streamlit
-- FastAPI
-- Pandas
-- NumPy
-- Plotly
-- scikit-learn
-- XGBoost
-- spaCy
-- NLTK
-- Sentence Transformers
-- Hugging Face Transformers
-- PyTorch
-- SQLite / PostgreSQL
+### Skill Gap Analysis
+- Job-specific skill-gap analysis
+- Market-level skill-gap analysis
+- Matched-skill identification
+- Missing-skill identification
+- Skill demand and priority analysis
 
-## Project Structure
+### Salary Intelligence
+- Salary normalization
+- Multi-rate salary annualization
+- Currency normalization
+- Salary distribution analysis
+- Salary prediction using machine learning
+- XGBoost salary prediction
+- Feature importance analysis
 
-- `frontend/` - User interface
-- `backend/` - API and application services
-- `src/` - Data, NLP, ML and recommendation logic
-- `data/` - Dataset storage
-- `models/` - Trained model artifacts
-- `notebooks/` - Research experiments
-- `tests/` - Automated tests
-- `config/` - Configuration
+### Career Recommendations
+- Semantic relevance
+- Skill coverage
+- Combined recommendation score
+- Skills to develop
+- Career recommendation results
 
-## Development Status
+---
 
-Core data processing, NLP, machine learning, semantic matching, skill-gap analysis, career recommendations, resume analysis, and Streamlit frontend have been implemented.
+## End-to-End Workflow
 
-The project is currently in the working prototype stage.
+```text
+Job Dataset
+    ↓
+Data Cleaning & Normalization
+    ↓
+NLP Skill Extraction
+    ↓
+Skill Demand & Relationship Analysis
+    ↓
+Semantic Job Embeddings
+    ↓
+Salary Intelligence
+    ↓
+Resume Upload
+    ↓
+Resume Analysis
+    ↓
+Candidate Profile
+    ↓
+Semantic Job Matching
+    ↓
+Skill Gap Analysis
+    ↓
+Career Recommendations
