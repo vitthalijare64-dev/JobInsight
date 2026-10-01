@@ -1,9 +1,10 @@
 from pathlib import Path
+import html
 import sys
 
 import pandas as pd
-import streamlit as st
 import plotly.express as px
+import streamlit as st
 
 
 # ============================================================
@@ -18,11 +19,19 @@ if str(PROJECT_ROOT) not in sys.path:
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 JOBS_PATH = PROCESSED_DIR / "jobs_normalized.parquet"
+
 if not JOBS_PATH.exists():
     JOBS_PATH = PROCESSED_DIR / "jobs_processed.parquet"
 
-SKILLS_PATH = PROCESSED_DIR / "job_skills_normalized.parquet"
-SKILL_DEMAND_PATH = PROCESSED_DIR / "skill_demand.csv"
+SKILLS_PATH = (
+    PROCESSED_DIR
+    / "job_skills_normalized.parquet"
+)
+
+SKILL_DEMAND_PATH = (
+    PROCESSED_DIR
+    / "skill_demand.csv"
+)
 
 
 # ============================================================
@@ -30,9 +39,419 @@ SKILL_DEMAND_PATH = PROCESSED_DIR / "skill_demand.csv"
 # ============================================================
 
 st.set_page_config(
-    page_title="JobInsight - Skill Gap",
+    page_title="Skill Gap | JobInsight",
     page_icon="🧩",
     layout="wide",
+)
+
+
+# ============================================================
+# GLOBAL CSS
+# ============================================================
+
+st.markdown(
+    """
+    <style>
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 8% 0%,
+                rgba(99,102,241,0.10),
+                transparent 27%
+            ),
+            radial-gradient(
+                circle at 92% 8%,
+                rgba(14,165,233,0.08),
+                transparent 25%
+            ),
+            #f6f8fc;
+    }
+
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #111827 0%,
+                #172554 55%,
+                #1e1b4b 100%
+            );
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #f8fafc;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1450px;
+    }
+
+    /* ========================================================
+       HERO
+       ======================================================== */
+
+    .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 34px 38px;
+        border-radius: 26px;
+        margin-bottom: 24px;
+        color: white;
+
+        background:
+            radial-gradient(
+                circle at 85% 20%,
+                rgba(129,140,248,0.40),
+                transparent 25%
+            ),
+            radial-gradient(
+                circle at 15% 90%,
+                rgba(56,189,248,0.18),
+                transparent 28%
+            ),
+            linear-gradient(
+                135deg,
+                #111827 0%,
+                #1e1b4b 52%,
+                #312e81 100%
+            );
+
+        box-shadow:
+            0 20px 50px rgba(15,23,42,0.16);
+    }
+
+    .hero-orb-one {
+        position: absolute;
+        width: 170px;
+        height: 170px;
+        border-radius: 50%;
+        right: 65px;
+        top: -80px;
+        background: rgba(129,140,248,0.16);
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hero-orb-two {
+        position: absolute;
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        right: 225px;
+        bottom: -42px;
+        background: rgba(56,189,248,0.14);
+    }
+
+    .hero-kicker {
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #a5b4fc;
+        margin-bottom: 8px;
+    }
+
+    .hero-title {
+        font-size: 38px;
+        line-height: 1.12;
+        font-weight: 800;
+        margin: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    .hero-subtitle {
+        margin-top: 12px;
+        max-width: 850px;
+        font-size: 16px;
+        line-height: 1.7;
+        color: #dbeafe;
+        position: relative;
+        z-index: 2;
+    }
+
+
+    /* ========================================================
+       SECTION
+       ======================================================== */
+
+    .section-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #111827;
+        margin: 28px 0 8px 0;
+    }
+
+    .section-subtitle {
+        color: #64748b;
+        font-size: 14px;
+        margin-bottom: 16px;
+        line-height: 1.6;
+    }
+
+
+    /* ========================================================
+       KPI
+       ======================================================== */
+
+    .kpi-card {
+        background: rgba(255,255,255,0.96);
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 20px;
+        min-height: 112px;
+
+        box-shadow:
+            0 8px 24px rgba(15,23,42,0.05);
+    }
+
+    .kpi-icon {
+        float: right;
+        font-size: 22px;
+    }
+
+    .kpi-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .kpi-value {
+        margin-top: 8px;
+        font-size: 25px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+
+    /* ========================================================
+       PROFILE CARD
+       ======================================================== */
+
+    .profile-card {
+        background:
+            linear-gradient(
+                135deg,
+                #ffffff,
+                #f8faff
+            );
+
+        border: 1px solid #dbeafe;
+        border-radius: 22px;
+        padding: 25px;
+
+        box-shadow:
+            0 10px 30px rgba(37,99,235,0.06);
+    }
+
+    .profile-name {
+        font-size: 25px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .profile-meta {
+        margin-top: 7px;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+
+    /* ========================================================
+       CONTENT CARDS
+       ======================================================== */
+
+    .content-card {
+        background: rgba(255,255,255,0.97);
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 22px;
+
+        box-shadow:
+            0 8px 24px rgba(15,23,42,0.045);
+    }
+
+    .card-heading {
+        font-size: 16px;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 14px;
+    }
+
+
+    /* ========================================================
+       SKILLS
+       ======================================================== */
+
+    .skill-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .skill-chip {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        color: #4338ca;
+        font-size: 12px;
+        font-weight: 650;
+    }
+
+    .matched-chip {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #047857;
+        font-size: 12px;
+        font-weight: 650;
+    }
+
+    .missing-chip {
+        display: inline-block;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #c2410c;
+        font-size: 12px;
+        font-weight: 650;
+    }
+
+
+    /* ========================================================
+       JOB CARD
+       ======================================================== */
+
+    .job-card {
+        background: rgba(255,255,255,0.97);
+        border: 1px solid #e2e8f0;
+        border-radius: 22px;
+        padding: 24px;
+
+        box-shadow:
+            0 8px 26px rgba(15,23,42,0.05);
+    }
+
+    .job-title {
+        font-size: 21px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .job-company {
+        margin-top: 5px;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .job-chip {
+        display: inline-block;
+        margin: 15px 7px 0 0;
+        padding: 7px 11px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+
+    /* ========================================================
+       COVERAGE
+       ======================================================== */
+
+    .coverage-number {
+        font-size: 42px;
+        font-weight: 850;
+        color: #4338ca;
+        line-height: 1;
+    }
+
+    .coverage-label {
+        margin-top: 7px;
+        color: #64748b;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        font-weight: 700;
+    }
+
+    .progress-track {
+        height: 9px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        overflow: hidden;
+        margin-top: 15px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background:
+            linear-gradient(
+                90deg,
+                #6366f1,
+                #38bdf8
+            );
+    }
+
+
+    /* ========================================================
+       PRIORITY
+       ======================================================== */
+
+    .priority-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 18px;
+
+        box-shadow:
+            0 7px 20px rgba(15,23,42,0.04);
+    }
+
+    .priority-name {
+        font-weight: 800;
+        color: #111827;
+        font-size: 15px;
+    }
+
+    .priority-demand {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+
+    /* ========================================================
+       FOOTER
+       ======================================================== */
+
+    .footer {
+        margin-top: 45px;
+        padding: 25px;
+        text-align: center;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -40,7 +459,19 @@ st.set_page_config(
 # HELPERS
 # ============================================================
 
-def safe_text(value, default="Unknown"):
+def render_html(content):
+    """
+    Always use Streamlit's native HTML renderer.
+    This prevents raw HTML from appearing in the UI.
+    """
+    st.html(content)
+
+
+def safe_text(
+    value,
+    default="Unknown",
+):
+
     if value is None:
         return default
 
@@ -52,7 +483,10 @@ def safe_text(value, default="Unknown"):
 
     text = str(value).strip()
 
-    if not text or text.lower() in {
+    if not text:
+        return default
+
+    if text.lower() in {
         "nan",
         "none",
         "null",
@@ -63,10 +497,14 @@ def safe_text(value, default="Unknown"):
 
 
 def safe_list(value):
+
     if value is None:
         return []
 
-    if isinstance(value, (list, tuple, set)):
+    if isinstance(
+        value,
+        (list, tuple, set),
+    ):
         return [
             str(x).strip()
             for x in value
@@ -74,15 +512,22 @@ def safe_list(value):
         ]
 
     if hasattr(value, "tolist"):
+
         try:
+
             converted = value.tolist()
 
-            if isinstance(converted, list):
+            if isinstance(
+                converted,
+                list,
+            ):
+
                 return [
                     str(x).strip()
                     for x in converted
                     if str(x).strip()
                 ]
+
         except Exception:
             pass
 
@@ -92,6 +537,7 @@ def safe_list(value):
         return []
 
     if "," in text:
+
         return [
             x.strip()
             for x in text.split(",")
@@ -102,6 +548,7 @@ def safe_list(value):
 
 
 def normalize_skill(skill):
+
     return (
         str(skill)
         .strip()
@@ -111,59 +558,106 @@ def normalize_skill(skill):
     )
 
 
-def display_skill_chips(
-    skills,
-    background="#eef2ff",
-    text_color="#243b8f",
-):
-    if not skills:
-        st.caption("None detected.")
-        return
+def unique_clean_skills(skills):
 
-    cols = st.columns(
-        min(6, max(1, len(skills)))
+    result = []
+    seen = set()
+
+    for skill in safe_list(skills):
+
+        normalized = normalize_skill(
+            skill
+        )
+
+        if (
+            normalized
+            and normalized not in seen
+        ):
+
+            seen.add(normalized)
+            result.append(skill)
+
+    return result
+
+
+def skill_chips_html(
+    skills,
+    chip_type="normal",
+):
+
+    skills = unique_clean_skills(
+        skills
     )
 
-    for index, skill in enumerate(skills):
-        with cols[index % len(cols)]:
-            st.markdown(
-                f"""
-                <div style="
-                    background:{background};
-                    color:{text_color};
-                    border-radius:18px;
-                    padding:7px 12px;
-                    margin:4px 0;
-                    text-align:center;
-                    font-size:14px;
-                    font-weight:500;
-                ">
-                    {skill}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    if not skills:
+
+        return (
+            '<span style="'
+            'color:#94a3b8;'
+            'font-size:13px;'
+            '">None detected.</span>'
+        )
+
+    if chip_type == "matched":
+        css_class = "matched-chip"
+
+    elif chip_type == "missing":
+        css_class = "missing-chip"
+
+    else:
+        css_class = "skill-chip"
+
+    output = ""
+
+    for skill in skills[:30]:
+
+        output += (
+            f'<span class="{css_class}">'
+            f'{html.escape(str(skill))}'
+            f'</span>'
+        )
+
+    if len(skills) > 30:
+
+        output += (
+            f'<span class="{css_class}">'
+            f'+{len(skills) - 30} more'
+            f'</span>'
+        )
+
+    return output
 
 
 def get_candidate_profile():
+
     keys = [
-        "resume_analysis",
         "candidate_profile",
+        "resume_analysis",
         "resume_profile",
         "parsed_resume",
     ]
 
     for key in keys:
-        value = st.session_state.get(key)
 
-        if isinstance(value, dict):
+        value = st.session_state.get(
+            key
+        )
+
+        if isinstance(
+            value,
+            dict,
+        ):
             return value
 
     return None
 
 
-def extract_candidate(profile):
+def extract_candidate(
+    profile
+):
+
     if not profile:
+
         return {
             "name": "Demo Candidate",
             "experience": "4+ years",
@@ -178,189 +672,169 @@ def extract_candidate(profile):
             ],
         }
 
-    name = (
-        profile.get("name")
-        or profile.get("candidate_name")
-        or profile.get("full_name")
-        or "Candidate"
+    name = safe_text(
+        profile.get(
+            "name",
+            "Candidate",
+        ),
+        "Candidate",
     )
 
-    experience = (
-        profile.get("experience")
-        or profile.get("experience_level")
-        or profile.get("years_experience")
-        or "Not detected"
+    experience = safe_text(
+        profile.get(
+            "experience",
+            "Not specified",
+        ),
+        "Not specified",
     )
 
-    skills = (
-        profile.get("skills")
-        or profile.get("detected_skills")
-        or profile.get("technical_skills")
-        or []
+    skills = unique_clean_skills(
+        profile.get(
+            "skills",
+            [],
+        )
     )
 
     return {
-        "name": safe_text(
-            name,
-            "Candidate",
-        ),
-        "experience": safe_text(
-            experience,
-            "Not detected",
-        ),
-        "skills": safe_list(skills),
+        "name": name,
+        "experience": experience,
+        "skills": skills,
     }
 
 
+# ============================================================
+# DATA LOADERS
+# ============================================================
+
+@st.cache_data
+def load_jobs():
+
+    if not JOBS_PATH.exists():
+        return pd.DataFrame()
+
+    try:
+        return pd.read_parquet(
+            JOBS_PATH
+        )
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data
 def load_skill_data():
+
     if not SKILLS_PATH.exists():
         return pd.DataFrame()
 
     try:
-        return pd.read_parquet(SKILLS_PATH)
+        return pd.read_parquet(
+            SKILLS_PATH
+        )
     except Exception:
         return pd.DataFrame()
 
 
+@st.cache_data
 def load_skill_demand():
+
     if not SKILL_DEMAND_PATH.exists():
         return pd.DataFrame()
 
     try:
-        return pd.read_csv(SKILL_DEMAND_PATH)
+        return pd.read_csv(
+            SKILL_DEMAND_PATH
+        )
     except Exception:
         return pd.DataFrame()
 
 
-def get_job_skills(skill_df, job_index):
+# ============================================================
+# JOB SKILL EXTRACTION
+# ============================================================
+
+def get_job_skills(
+    job_id,
+    skill_df,
+):
+
     if skill_df.empty:
         return []
 
-    # --------------------------------------------------------
-    # job_index schema
-    # --------------------------------------------------------
+    possible_id_columns = [
+        "job_index",
+        "job_id",
+        "index",
+        "id",
+    ]
 
-    if "job_index" in skill_df.columns:
+    possible_skill_columns = [
+        "skill",
+        "Skill",
+        "skill_name",
+        "normalized_skill",
+    ]
 
-        rows = skill_df[
-            skill_df["job_index"].astype(str)
-            == str(job_index)
+    id_column = None
+    skill_column = None
+
+    for column in possible_id_columns:
+
+        if column in skill_df.columns:
+            id_column = column
+            break
+
+    for column in possible_skill_columns:
+
+        if column in skill_df.columns:
+            skill_column = column
+            break
+
+    if skill_column is None:
+        return []
+
+    if id_column is None:
+
+        return []
+
+    try:
+
+        matches = skill_df[
+            skill_df[id_column]
+            == job_id
         ]
 
-        if not rows.empty:
+    except Exception:
 
-            for column in [
-                "skills",
-                "normalized_skills",
-            ]:
+        return []
 
-                if column in rows.columns:
+    if matches.empty:
+        return []
 
-                    skills = []
-
-                    for value in rows[column]:
-                        skills.extend(
-                            safe_list(value)
-                        )
-
-                    return list(
-                        dict.fromkeys(skills)
-                    )
-
-    # --------------------------------------------------------
-    # Original index schema
-    # --------------------------------------------------------
-
-    if "skills" in skill_df.columns:
-
-        try:
-            row = skill_df.loc[job_index]
-
-            if isinstance(row, pd.Series):
-                return safe_list(
-                    row.get("skills")
-                )
-
-        except Exception:
-            pass
-
-    return []
-
-
-def calculate_gap(candidate_skills, job_skills):
-    candidate_set = {
-        normalize_skill(skill)
-        for skill in candidate_skills
-        if normalize_skill(skill)
-    }
-
-    job_set = {
-        normalize_skill(skill)
-        for skill in job_skills
-        if normalize_skill(skill)
-    }
-
-    if not job_set:
-        return 0.0, [], []
-
-    matched_normalized = (
-        candidate_set.intersection(job_set)
+    return unique_clean_skills(
+        matches[skill_column]
+        .dropna()
+        .tolist()
     )
 
-    missing_normalized = (
-        job_set.difference(candidate_set)
-    )
 
-    # Preserve readable names
-    candidate_lookup = {
-        normalize_skill(skill): skill
-        for skill in candidate_skills
-    }
+# ============================================================
+# MARKET DEMAND
+# ============================================================
 
-    job_lookup = {
-        normalize_skill(skill): skill
-        for skill in job_skills
-    }
+def get_market_demand(
+    skill_demand
+):
 
-    matched = sorted(
-        [
-            candidate_lookup.get(
-                skill,
-                skill,
-            )
-            for skill in matched_normalized
-        ]
-    )
-
-    missing = sorted(
-        [
-            job_lookup.get(
-                skill,
-                skill,
-            )
-            for skill in missing_normalized
-        ]
-    )
-
-    score = (
-        len(matched_normalized)
-        / len(job_set)
-    ) * 100
-
-    return score, matched, missing
-
-
-def get_market_demand(skill_demand):
     if skill_demand.empty:
         return {}
 
-    # Find likely skill column
     skill_column = None
 
     for column in [
         "skill",
         "Skill",
         "skills",
+        "skill_name",
     ]:
 
         if column in skill_demand.columns:
@@ -370,7 +844,6 @@ def get_market_demand(skill_demand):
     if skill_column is None:
         return {}
 
-    # Find likely demand/count column
     demand_column = None
 
     for column in [
@@ -386,6 +859,7 @@ def get_market_demand(skill_demand):
             break
 
     if demand_column is None:
+
         numeric_columns = (
             skill_demand
             .select_dtypes(
@@ -406,7 +880,9 @@ def get_market_demand(skill_demand):
     for _, row in skill_demand.iterrows():
 
         skill = safe_text(
-            row.get(skill_column),
+            row.get(
+                skill_column
+            ),
             "",
         )
 
@@ -414,13 +890,16 @@ def get_market_demand(skill_demand):
             continue
 
         try:
+
             value = float(
                 row.get(
                     demand_column,
                     0,
                 )
             )
+
         except Exception:
+
             value = 0
 
         demand[
@@ -431,20 +910,282 @@ def get_market_demand(skill_demand):
 
 
 # ============================================================
-# HEADER
+# GAP CALCULATION
 # ============================================================
 
-st.title("🧩 Skill Gap Analysis")
+def calculate_gap(
+    candidate_skills,
+    required_skills,
+):
 
-st.markdown(
+    candidate_map = {
+        normalize_skill(skill)
+        for skill in candidate_skills
+    }
+
+    required = unique_clean_skills(
+        required_skills
+    )
+
+    matched = []
+    missing = []
+
+    for skill in required:
+
+        normalized = normalize_skill(
+            skill
+        )
+
+        if normalized in candidate_map:
+
+            matched.append(skill)
+
+        else:
+
+            missing.append(skill)
+
+    total = len(required)
+
+    if total == 0:
+
+        coverage = 0.0
+
+    else:
+
+        coverage = (
+            len(matched)
+            / total
+            * 100
+        )
+
+    return (
+        matched,
+        missing,
+        coverage,
+    )
+
+
+# ============================================================
+# HEADER / HERO
+# ============================================================
+
+render_html(
     """
-    Identify the skills you already have, the skills required by
-    target jobs, and the capabilities you may want to develop
-    to improve your job-market alignment.
+    <div class="hero">
+
+        <div class="hero-orb-one"></div>
+        <div class="hero-orb-two"></div>
+
+        <div class="hero-kicker">
+            JOBINSIGHT · CAREER INTELLIGENCE
+        </div>
+
+        <div class="hero-title">
+            Understand the skills you need to move forward.
+        </div>
+
+        <div class="hero-subtitle">
+            Compare your current capabilities with target-job
+            requirements and broader market demand. Identify
+            what you already have and what you can develop next.
+        </div>
+
+    </div>
     """
 )
 
-st.divider()
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    # --------------------------------------------------------
+    # SIDEBAR BRANDING
+    # --------------------------------------------------------
+
+    st.html(
+        """
+        <div style="
+            padding:10px 4px 24px 4px;
+            text-align:center;
+        ">
+
+            <div style="
+                width:64px;
+                height:64px;
+                border-radius:20px;
+                margin:auto;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #6366f1,
+                        #38bdf8
+                    );
+                font-size:30px;
+                box-shadow:
+                    0 12px 30px
+                    rgba(99,102,241,.35);
+            ">
+                🧩
+            </div>
+
+            <div style="
+                margin-top:12px;
+                font-size:18px;
+                font-weight:800;
+            ">
+                Skill Gap
+            </div>
+
+            <div style="
+                margin-top:5px;
+                font-size:12px;
+                opacity:.70;
+            ">
+                Career skill intelligence
+            </div>
+
+        </div>
+        """
+    )
+
+    # --------------------------------------------------------
+    # NAVIGATION
+    # --------------------------------------------------------
+
+    st.page_link(
+        "app.py",
+        label="Home",
+        icon="🏠",
+    )
+
+    st.page_link(
+        "pages/1_Job_Explorer.py",
+        label="Job Explorer",
+        icon="🔎",
+    )
+
+    st.page_link(
+        "pages/2_Market_Intelligence.py",
+        label="Market Intelligence",
+        icon="📊",
+    )
+
+    st.page_link(
+        "pages/3_Skills_Intelligence.py",
+        label="Skills Intelligence",
+        icon="🧠",
+    )
+
+    st.page_link(
+        "pages/4_Salary_Intelligence.py",
+        label="Salary Intelligence",
+        icon="💰",
+    )
+
+    st.page_link(
+        "pages/5_Resume_Analyzer.py",
+        label="Resume Analyzer",
+        icon="📄",
+    )
+
+    st.page_link(
+        "pages/6_Job_Matcher.py",
+        label="Job Matcher",
+        icon="🎯",
+    )
+
+    st.page_link(
+        "pages/7_Skill_Gap.py",
+        label="Skill Gap",
+        icon="🧩",
+    )
+
+    st.page_link(
+        "pages/8_Career_Recommendations.py",
+        label="Career Recommendations",
+        icon="🚀",
+    )
+
+    st.page_link(
+        "pages/9_Profile.py",
+        label="Profile",
+        icon="👤",
+    )
+
+    # --------------------------------------------------------
+    # SIDEBAR PIPELINE
+    # --------------------------------------------------------
+
+    st.html(
+        """
+        <div style="
+            margin-top:25px;
+            padding:15px;
+            border-radius:16px;
+            background:
+                rgba(255,255,255,.07);
+            border:
+                1px solid
+                rgba(255,255,255,.08);
+            font-size:11px;
+            line-height:1.7;
+            color:#cbd5e1;
+        ">
+
+            <div style="
+                font-size:12px;
+                font-weight:800;
+                color:#ffffff;
+                margin-bottom:10px;
+            ">
+                Skill Gap Pipeline
+            </div>
+
+            <div>
+                👤 Candidate Skills
+            </div>
+
+            <div>
+                ↓
+            </div>
+
+            <div>
+                🎯 Target Job
+            </div>
+
+            <div>
+                ↓
+            </div>
+
+            <div>
+                🧩 Required Skills
+            </div>
+
+            <div>
+                ↓
+            </div>
+
+            <div>
+                📊 Skill Coverage
+            </div>
+
+            <div>
+                ↓
+            </div>
+
+            <div>
+                🚀 Development Priorities
+            </div>
+
+        </div>
+        """
+    )
 
 
 # ============================================================
@@ -452,58 +1193,217 @@ st.divider()
 # ============================================================
 
 profile = get_candidate_profile()
-candidate = extract_candidate(profile)
 
-candidate_skills = candidate["skills"]
-
-
-st.header("👤 Candidate Profile")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "Candidate",
-        candidate["name"],
-    )
-
-with col2:
-    st.metric(
-        "Experience",
-        candidate["experience"],
-    )
-
-with col3:
-    st.metric(
-        "Detected Skills",
-        len(candidate_skills),
-    )
-
-
-st.subheader("🧠 Your Current Skills")
-
-display_skill_chips(
-    candidate_skills
+candidate = extract_candidate(
+    profile
 )
 
-st.divider()
+candidate_skills = candidate[
+    "skills"
+]
+
+
+# ============================================================
+# CANDIDATE PROFILE CARD
+# ============================================================
+
+render_html(
+    f"""
+    <div class="section-title">
+        👤 Candidate Profile
+    </div>
+
+    <div class="section-subtitle">
+        Your current resume profile is used as the
+        baseline for skill-gap analysis.
+    </div>
+
+    <div class="profile-card">
+
+        <div class="profile-name">
+            {html.escape(
+                candidate["name"]
+            )}
+        </div>
+
+        <div class="profile-meta">
+            Experience:
+            <b>
+                {html.escape(
+                    candidate["experience"]
+                )}
+            </b>
+
+            &nbsp; • &nbsp;
+
+            <b>
+                {len(candidate_skills)}
+            </b>
+            detected skills
+        </div>
+
+        <div style="
+            margin-top:18px;
+            font-size:11px;
+            text-transform:uppercase;
+            letter-spacing:.07em;
+            font-weight:800;
+            color:#475569;
+            margin-bottom:10px;
+        ">
+            Your Current Skills
+        </div>
+
+        <div class="skill-wrap">
+            {skill_chips_html(
+                candidate_skills
+            )}
+        </div>
+
+    </div>
+    """
+)
 
 
 # ============================================================
 # LOAD DATA
 # ============================================================
 
+jobs = load_jobs()
+
 skill_df = load_skill_data()
-skill_demand = load_skill_demand()
+
+skill_demand_df = load_skill_demand()
 
 market_demand = get_market_demand(
-    skill_demand
+    skill_demand_df
 )
 
 
 # ============================================================
-# GET JOB MATCHES
+# KPI ROW
 # ============================================================
+
+col1, col2, col3, col4 = (
+    st.columns(4)
+)
+
+
+with col1:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                🧠
+            </div>
+
+            <div class="kpi-label">
+                Your Skills
+            </div>
+
+            <div class="kpi-value">
+                {len(candidate_skills)}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with col2:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                💼
+            </div>
+
+            <div class="kpi-label">
+                Jobs Available
+            </div>
+
+            <div class="kpi-value">
+                {len(jobs):,}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with col3:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                🧩
+            </div>
+
+            <div class="kpi-label">
+                Skill Records
+            </div>
+
+            <div class="kpi-value">
+                {len(skill_df):,}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with col4:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                📈
+            </div>
+
+            <div class="kpi-label">
+                Market Skills
+            </div>
+
+            <div class="kpi-value">
+                {len(market_demand):,}
+            </div>
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# TARGET JOB
+# ============================================================
+
+render_html(
+    """
+    <div class="section-title">
+        🎯 Target Job
+    </div>
+
+    <div class="section-subtitle">
+        Select a job to compare its required skills
+        with your current candidate profile.
+    </div>
+    """
+)
+
+
+# ------------------------------------------------------------
+# JOB SOURCE
+# ------------------------------------------------------------
+
+job_source = None
 
 matches = st.session_state.get(
     "job_matcher_results",
@@ -511,533 +1411,1053 @@ matches = st.session_state.get(
 )
 
 
-# ============================================================
-# JOB SELECTION
-# ============================================================
-
-st.header("🎯 Target Job")
-
 if (
-    isinstance(matches, pd.DataFrame)
+    isinstance(
+        matches,
+        pd.DataFrame,
+    )
     and not matches.empty
 ):
 
-    display_matches = matches.copy()
+    job_source = matches.copy()
 
-    display_matches = (
-        display_matches
-        .sort_values(
-            "match_score",
-            ascending=False,
-        )
-        .reset_index(drop=True)
+elif not jobs.empty:
+
+    job_source = jobs.copy()
+
+
+if job_source is None or job_source.empty:
+
+    st.warning(
+        "No job data is available for skill-gap analysis."
     )
 
-    job_options = []
+    st.stop()
 
-    for index, row in display_matches.iterrows():
 
-        title = safe_text(
-            row.get(
-                "title"
-            ),
-            "Untitled Job",
-        )
+# ------------------------------------------------------------
+# COLUMN HELPERS
+# ------------------------------------------------------------
 
-        company = safe_text(
-            row.get(
-                "company"
-            ),
-            "Unknown Company",
-        )
+def first_existing_column(
+    dataframe,
+    columns,
+):
 
-        score = float(
-            row.get(
-                "match_score",
-                0,
-            )
-        )
+    for column in columns:
 
-        job_options.append(
-            f"{index + 1}. "
-            f"{title} — "
-            f"{company} "
-            f"({score:.1f}% match)"
-        )
+        if column in dataframe.columns:
+            return column
 
-    selected_label = st.selectbox(
-        "Select a matched job to analyze",
-        job_options,
+    return None
+
+
+title_column = first_existing_column(
+    job_source,
+    [
+        "title",
+        "job_title",
+        "normalized_title",
+    ],
+)
+
+
+company_column = first_existing_column(
+    job_source,
+    [
+        "company_name",
+        "company",
+    ],
+)
+
+
+work_model_column = first_existing_column(
+    job_source,
+    [
+        "work_model",
+    ],
+)
+
+
+experience_column = first_existing_column(
+    job_source,
+    [
+        "experience_level",
+    ],
+)
+
+
+if title_column is None:
+
+    job_source["__display_title"] = (
+        "Job Opportunity"
     )
 
-    selected_position = job_options.index(
-        selected_label
+    title_column = "__display_title"
+
+
+if company_column is None:
+
+    job_source["__display_company"] = (
+        "Company not specified"
     )
 
-    selected_job = display_matches.iloc[
-        selected_position
-    ]
+    company_column = "__display_company"
 
-    selected_job_index = selected_job.get(
-        "job_index"
-    )
 
-    selected_title = safe_text(
-        selected_job.get(
-            "title"
+# ------------------------------------------------------------
+# JOB OPTIONS
+# ------------------------------------------------------------
+
+job_options = []
+
+job_records = []
+
+
+for position, (
+    index,
+    row,
+) in enumerate(
+    job_source.head(1000).iterrows()
+):
+
+    title = safe_text(
+        row.get(
+            title_column
         ),
         "Untitled Job",
     )
 
-    selected_company = safe_text(
-        selected_job.get(
-            "company"
+    company = safe_text(
+        row.get(
+            company_column
         ),
         "Unknown Company",
     )
 
-    selected_match = float(
+    job_options.append(
+        f"{position + 1}. "
+        f"{title} — "
+        f"{company}"
+    )
+
+    job_records.append(
+        (
+            index,
+            row,
+        )
+    )
+
+
+selected_label = st.selectbox(
+    "Choose a target job",
+    job_options,
+)
+
+
+selected_position = (
+    job_options.index(
+        selected_label
+    )
+)
+
+
+selected_index, selected_job = (
+    job_records[
+        selected_position
+    ]
+)
+
+
+# ============================================================
+# SELECTED JOB INFORMATION
+# ============================================================
+
+selected_title = safe_text(
+    selected_job.get(
+        title_column
+    ),
+    "Untitled Job",
+)
+
+selected_company = safe_text(
+    selected_job.get(
+        company_column
+    ),
+    "Unknown Company",
+)
+
+selected_work_model = (
+    safe_text(
         selected_job.get(
-            "match_score",
-            0,
+            work_model_column
         )
     )
+    if work_model_column
+    else "Not specified"
+)
 
-else:
-
-    st.info(
-        """
-        No Job Matcher results are currently available.
-
-        You can still use the market-level skill-gap analysis below,
-        or go to **Job Matcher** after analyzing your resume.
-        """
-    )
-
-    selected_job = None
-    selected_job_index = None
-    selected_title = None
-    selected_company = None
-    selected_match = 0
-
-
-# ============================================================
-# JOB-SPECIFIC GAP
-# ============================================================
-
-if selected_job is not None:
-
-    st.divider()
-
-    st.header("🔍 Job-Specific Skill Gap")
-
-    job_skills = get_job_skills(
-        skill_df,
-        selected_job_index,
-    )
-
-    if not job_skills:
-
-        # Try skill information already stored
-        # by Job Matcher.
-        job_skills = (
-            safe_list(
-                selected_job.get(
-                    "matched_skills",
-                    [],
-                )
-            )
-            + safe_list(
-                selected_job.get(
-                    "missing_skills",
-                    [],
-                )
-            )
-        )
-
-    gap_score, matched, missing = calculate_gap(
-        candidate_skills,
-        job_skills,
-    )
-
-    # --------------------------------------------------------
-    # JOB SUMMARY
-    # --------------------------------------------------------
-
-    job_col1, job_col2, job_col3 = st.columns(3)
-
-    with job_col1:
-        st.metric(
-            "Job",
-            selected_title,
-        )
-
-    with job_col2:
-        st.metric(
-            "Company",
-            selected_company,
-        )
-
-    with job_col3:
-        st.metric(
-            "Current Skill Coverage",
-            f"{gap_score:.1f}%",
-        )
-
-    # --------------------------------------------------------
-    # PROGRESS
-    # --------------------------------------------------------
-
-    st.progress(
-        min(
-            max(gap_score / 100, 0),
-            1,
+selected_experience = (
+    safe_text(
+        selected_job.get(
+            experience_column
         )
     )
-
-    # --------------------------------------------------------
-    # MATCHED / MISSING
-    # --------------------------------------------------------
-
-    matched_col, missing_col = st.columns(2)
-
-    with matched_col:
-
-        st.subheader(
-            "✅ Skills You Have"
-        )
-
-        if matched:
-            display_skill_chips(
-                matched,
-                background="#e8f7ee",
-                text_color="#176b3a",
-            )
-        else:
-            st.info(
-                "No overlapping skills detected."
-            )
-
-    with missing_col:
-
-        st.subheader(
-            "📌 Skills to Develop"
-        )
-
-        if missing:
-            display_skill_chips(
-                missing,
-                background="#fff1f1",
-                text_color="#a62a2a",
-            )
-        else:
-            st.success(
-                "No missing skills detected "
-                "for this job's extracted skill set."
-            )
+    if experience_column
+    else "Not specified"
+)
 
 
-# ============================================================
-# MARKET-LEVEL GAP
-# ============================================================
+render_html(
+    f"""
+    <div class="job-card">
 
-st.divider()
+        <div class="job-title">
+            {html.escape(
+                selected_title
+            )}
+        </div>
 
-st.header("🌎 Market-Level Skill Gap")
+        <div class="job-company">
+            🏢 {html.escape(
+                selected_company
+            )}
+        </div>
 
-st.markdown(
-    """
-    This section compares your current skills with the skills
-    appearing most frequently across the JobInsight job market.
+        <span class="job-chip">
+            💼 {html.escape(
+                selected_work_model
+            )}
+        </span>
+
+        <span class="job-chip">
+            🎯 {html.escape(
+                selected_experience
+            )}
+        </span>
+
+    </div>
     """
 )
 
 
 # ============================================================
-# TOP MARKET SKILLS
+# REQUIRED JOB SKILLS
 # ============================================================
 
-market_skills = []
+required_skills = get_job_skills(
+    selected_index,
+    skill_df,
+)
 
-if not skill_demand.empty:
 
-    skill_column = None
+# ------------------------------------------------------------
+# FALLBACK: TRY INDEX POSITION
+# ------------------------------------------------------------
 
-    for column in [
-        "skill",
-        "Skill",
-        "skills",
+if not required_skills:
+
+    try:
+
+        required_skills = get_job_skills(
+            selected_position,
+            skill_df,
+        )
+
+    except Exception:
+        pass
+
+
+# ------------------------------------------------------------
+# FALLBACK: TRY JOB ID
+# ------------------------------------------------------------
+
+if not required_skills:
+
+    for id_column in [
+        "job_id",
+        "id",
+        "job_index",
     ]:
 
-        if column in skill_demand.columns:
-            skill_column = column
-            break
+        if (
+            id_column
+            in selected_job.index
+        ):
 
-    if skill_column:
+            try:
 
-        market_skills = (
-            skill_demand[
-                skill_column
-            ]
-            .dropna()
-            .astype(str)
-            .tolist()
-        )
+                required_skills = (
+                    get_job_skills(
+                        selected_job[
+                            id_column
+                        ],
+                        skill_df,
+                    )
+                )
 
-        # Remove duplicates while preserving order
-        market_skills = list(
-            dict.fromkeys(
-                market_skills
-            )
-        )
+            except Exception:
+                pass
 
-
-# Fallback from existing market skills
-if not market_skills:
-
-    market_skills = [
-        "Microsoft Excel",
-        "Project Management",
-        "Data Analysis",
-        "Python",
-        "SQL",
-        "Agile",
-        "AWS",
-        "Microsoft Azure",
-        "API",
-        "Java",
-    ]
+            if required_skills:
+                break
 
 
-# Top 15
-market_skills = market_skills[:15]
+# ============================================================
+# JOB GAP
+# ============================================================
 
-
-market_gap_score, market_matched, market_missing = calculate_gap(
-    candidate_skills,
-    market_skills,
+matched_skills, missing_skills, coverage = (
+    calculate_gap(
+        candidate_skills,
+        required_skills,
+    )
 )
 
 
-market_col1, market_col2, market_col3 = st.columns(3)
+# ============================================================
+# JOB-SPECIFIC GAP HEADER
+# ============================================================
+
+render_html(
+    """
+    <div class="section-title">
+        🧩 Job-Specific Skill Gap
+    </div>
+
+    <div class="section-subtitle">
+        Compare your detected skills with the skills
+        identified for the selected opportunity.
+    </div>
+    """
+)
+
+
+# ============================================================
+# COVERAGE CARDS
+# ============================================================
+
+gap_col1, gap_col2, gap_col3 = (
+    st.columns(3)
+)
+
+
+with gap_col1:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                📋
+            </div>
+
+            <div class="kpi-label">
+                Required Skills
+            </div>
+
+            <div class="kpi-value">
+                {len(required_skills)}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with gap_col2:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                ✅
+            </div>
+
+            <div class="kpi-label">
+                Matched Skills
+            </div>
+
+            <div class="kpi-value">
+                {len(matched_skills)}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with gap_col3:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                📌
+            </div>
+
+            <div class="kpi-label">
+                Skills to Develop
+            </div>
+
+            <div class="kpi-value">
+                {len(missing_skills)}
+            </div>
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# COVERAGE PANEL
+# ============================================================
+
+render_html(
+    f"""
+    <div class="content-card"
+         style="margin-top:18px;">
+
+        <div style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:20px;
+        ">
+
+            <div>
+
+                <div class="coverage-number">
+                    {coverage:.1f}%
+                </div>
+
+                <div class="coverage-label">
+                    Skill Coverage
+                </div>
+
+            </div>
+
+            <div style="
+                flex:1;
+                max-width:700px;
+            ">
+
+                <div class="progress-track">
+
+                    <div
+                        class="progress-fill"
+                        style="
+                            width:{
+                                max(
+                                    0,
+                                    min(
+                                        100,
+                                        coverage
+                                    )
+                                )
+                            }%;
+                        "
+                    ></div>
+
+                </div>
+
+                <div style="
+                    margin-top:10px;
+                    color:#64748b;
+                    font-size:12px;
+                ">
+                    {len(matched_skills)}
+                    matched out of
+                    {len(required_skills)}
+                    detected job skills.
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    """
+)
+
+
+# ============================================================
+# MATCHED / MISSING SKILLS
+# ============================================================
+
+matched_col, missing_col = (
+    st.columns(2)
+)
+
+
+with matched_col:
+
+    render_html(
+        f"""
+        <div class="content-card"
+             style="margin-top:18px;">
+
+            <div class="card-heading">
+                ✅ Skills You Already Have
+            </div>
+
+            <div class="skill-wrap">
+                {skill_chips_html(
+                    matched_skills,
+                    "matched",
+                )}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with missing_col:
+
+    render_html(
+        f"""
+        <div class="content-card"
+             style="margin-top:18px;">
+
+            <div class="card-heading">
+                📌 Skills to Develop
+            </div>
+
+            <div class="skill-wrap">
+                {skill_chips_html(
+                    missing_skills,
+                    "missing",
+                )}
+            </div>
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# MARKET LEVEL ANALYSIS
+# ============================================================
+
+render_html(
+    """
+    <div class="section-title">
+        🌐 Market-Level Skill Gap
+    </div>
+
+    <div class="section-subtitle">
+        Compare your current skills with the skills most
+        frequently detected across the broader job market.
+    </div>
+    """
+)
+
+
+# ------------------------------------------------------------
+# TOP MARKET SKILLS
+# ------------------------------------------------------------
+
+market_rows = []
+
+for skill, demand in (
+    market_demand.items()
+):
+
+    market_rows.append(
+        {
+            "skill": skill,
+            "demand": demand,
+        }
+    )
+
+
+market_df = pd.DataFrame(
+    market_rows
+)
+
+
+if not market_df.empty:
+
+    market_df = (
+        market_df
+        .sort_values(
+            "demand",
+            ascending=False,
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+
+# ------------------------------------------------------------
+# MARKET GAP
+# ------------------------------------------------------------
+
+candidate_normalized = {
+    normalize_skill(skill)
+    for skill in candidate_skills
+}
+
+
+market_top_skills = (
+    market_df
+    .head(20)
+    .copy()
+    if not market_df.empty
+    else pd.DataFrame()
+)
+
+
+market_covered = []
+market_missing = []
+
+
+if not market_top_skills.empty:
+
+    for skill in market_top_skills[
+        "skill"
+    ]:
+
+        if (
+            normalize_skill(skill)
+            in candidate_normalized
+        ):
+
+            market_covered.append(
+                skill
+            )
+
+        else:
+
+            market_missing.append(
+                skill
+            )
+
+
+# ============================================================
+# MARKET KPI
+# ============================================================
+
+market_col1, market_col2, market_col3 = (
+    st.columns(3)
+)
+
 
 with market_col1:
-    st.metric(
-        "Market Skills Considered",
-        len(market_skills),
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                🌐
+            </div>
+
+            <div class="kpi-label">
+                Market Skills Reviewed
+            </div>
+
+            <div class="kpi-value">
+                {len(market_top_skills)}
+            </div>
+
+        </div>
+        """
     )
+
 
 with market_col2:
-    st.metric(
-        "Skills Already Covered",
-        len(market_matched),
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                ✅
+            </div>
+
+            <div class="kpi-label">
+                Market Skills Covered
+            </div>
+
+            <div class="kpi-value">
+                {len(market_covered)}
+            </div>
+
+        </div>
+        """
     )
+
 
 with market_col3:
-    st.metric(
-        "Market Skills Missing",
-        len(market_missing),
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+
+            <div class="kpi-icon">
+                📌
+            </div>
+
+            <div class="kpi-label">
+                Market Skills Missing
+            </div>
+
+            <div class="kpi-value">
+                {len(market_missing)}
+            </div>
+
+        </div>
+        """
     )
 
 
-st.progress(
-    min(
-        max(market_gap_score / 100, 0),
-        1,
-    )
+# ============================================================
+# MARKET SKILLS
+# ============================================================
+
+market_skill_col1, market_skill_col2 = (
+    st.columns(2)
 )
 
-st.caption(
-    f"Coverage of the selected top market skills: "
-    f"{market_gap_score:.1f}%"
+
+with market_skill_col1:
+
+    render_html(
+        f"""
+        <div class="content-card"
+             style="margin-top:18px;">
+
+            <div class="card-heading">
+                ✅ Covered Market Skills
+            </div>
+
+            <div class="skill-wrap">
+                {skill_chips_html(
+                    market_covered,
+                    "matched",
+                )}
+            </div>
+
+        </div>
+        """
+    )
+
+
+with market_skill_col2:
+
+    render_html(
+        f"""
+        <div class="content-card"
+             style="margin-top:18px;">
+
+            <div class="card-heading">
+                📌 Missing Market Skills
+            </div>
+
+            <div class="skill-wrap">
+                {skill_chips_html(
+                    market_missing,
+                    "missing",
+                )}
+            </div>
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# MARKET DEMAND VISUALIZATION
+# ============================================================
+
+if not market_top_skills.empty:
+
+    render_html(
+        """
+        <div class="section-title">
+            📊 Market Skill Demand
+        </div>
+
+        <div class="section-subtitle">
+            Demand counts show how frequently each skill
+            appears in the processed job-skill dataset.
+        </div>
+        """
+    )
+
+    chart_data = (
+        market_top_skills
+        .head(15)
+        .sort_values(
+            "demand",
+            ascending=True,
+        )
+    )
+
+    fig = px.bar(
+        chart_data,
+        x="demand",
+        y="skill",
+        orientation="h",
+        labels={
+            "demand": "Job Count",
+            "skill": "",
+        },
+        text="demand",
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:,}",
+        textposition="outside",
+    )
+
+    fig.update_layout(
+        height=max(
+            450,
+            len(chart_data) * 38,
+        ),
+        margin=dict(
+            l=10,
+            r=80,
+            t=20,
+            b=20,
+        ),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+    )
+
+
+# ============================================================
+# PRIORITY DEVELOPMENT SKILLS
+# ============================================================
+
+render_html(
+    """
+    <div class="section-title">
+        🚀 Priority Skills to Develop
+    </div>
+
+    <div class="section-subtitle">
+        Missing skills are shown with their market-demand
+        signal to help identify development priorities.
+    </div>
+    """
 )
 
 
-# ============================================================
-# MARKET SKILL VISUALIZATION
-# ============================================================
+priority_rows = []
 
-if market_skills:
+for skill in missing_skills:
 
-    visualization_rows = []
-
-    candidate_normalized = {
-        normalize_skill(skill)
-        for skill in candidate_skills
-    }
-
-    for skill in market_skills:
-
-        normalized = normalize_skill(
-            skill
-        )
-
-        demand_value = market_demand.get(
-            normalized,
-            0,
-        )
-
-        visualization_rows.append(
-            {
-                "Skill": skill,
-                "Demand": demand_value,
-                "Status": (
-                    "Have"
-                    if normalized
-                    in candidate_normalized
-                    else "Gap"
-                ),
-            }
-        )
-
-    visualization_df = pd.DataFrame(
-        visualization_rows
+    normalized = normalize_skill(
+        skill
     )
 
-    if visualization_df["Demand"].sum() > 0:
-
-        st.subheader(
-            "📊 Market Skills and Your Coverage"
-        )
-
-        fig = px.bar(
-            visualization_df,
-            x="Demand",
-            y="Skill",
-            color="Status",
-            orientation="h",
-            labels={
-                "Demand": "Job Demand",
-                "Skill": "Skill",
-            },
-        )
-
-        fig.update_layout(
-            height=550,
-            margin=dict(
-                l=20,
-                r=30,
-                t=20,
-                b=20,
-            ),
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-        )
-
-
-# ============================================================
-# PRIORITY SKILL GAPS
-# ============================================================
-
-st.header("🚀 Priority Skill Gaps")
-
-if market_missing:
-
-    priority_rows = []
-
-    for skill in market_missing:
-
-        demand = market_demand.get(
-            normalize_skill(skill),
-            0,
-        )
-
-        priority_rows.append(
-            {
-                "Skill": skill,
-                "Market Demand": demand,
-            }
-        )
-
-    priority_df = pd.DataFrame(
-        priority_rows
+    demand = market_demand.get(
+        normalized,
+        0,
     )
 
-    if not priority_df.empty:
+    priority_rows.append(
+        {
+            "skill": skill,
+            "demand": demand,
+        }
+    )
 
-        priority_df = (
-            priority_df
-            .sort_values(
-                "Market Demand",
-                ascending=False,
-            )
-            .reset_index(drop=True)
-        )
 
-        # Add priority rank
-        priority_df.insert(
-            0,
-            "Priority",
-            range(
-                1,
-                len(priority_df) + 1,
-            ),
-        )
+priority_df = pd.DataFrame(
+    priority_rows
+)
 
-        st.dataframe(
-            priority_df,
-            use_container_width=True,
-            hide_index=True,
+
+if not priority_df.empty:
+
+    priority_df = (
+        priority_df
+        .sort_values(
+            "demand",
+            ascending=False,
         )
+        .head(12)
+    )
+
+
+if priority_df.empty:
+
+    render_html(
+        """
+        <div class="content-card">
+
+            <div style="
+                color:#047857;
+                font-weight:700;
+                font-size:14px;
+            ">
+                🎉 No priority skill gaps detected
+            </div>
+
+            <div style="
+                margin-top:7px;
+                color:#64748b;
+                font-size:13px;
+            ">
+                Your current skills cover the detected
+                requirements for this target job.
+            </div>
+
+        </div>
+        """
+    )
 
 else:
 
-    st.success(
-        "Your current skills cover the selected "
-        "top market skills."
+    priority_columns = st.columns(
+        min(
+            3,
+            len(priority_df),
+        )
     )
 
-
-# ============================================================
-# DEVELOPMENT PLAN
-# ============================================================
-
-st.divider()
-
-st.header("🗺️ Suggested Development Path")
-
-if market_missing:
-
-    top_priority = market_missing[:5]
-
-    for index, skill in enumerate(
-        top_priority,
-        start=1,
+    for index, (_, row) in enumerate(
+        priority_df.iterrows()
     ):
 
-        demand = market_demand.get(
-            normalize_skill(skill),
-            0,
+        skill = safe_text(
+            row["skill"]
         )
 
-        if demand > 0:
-            demand_text = (
-                f"{demand:,.0f} observed "
-                f"job records"
+        demand = row["demand"]
+
+        with priority_columns[
+            index % len(priority_columns)
+        ]:
+
+            render_html(
+                f"""
+                <div class="priority-card">
+
+                    <div class="priority-name">
+                        📌 {html.escape(skill)}
+                    </div>
+
+                    <div class="priority-demand">
+                        Market demand:
+                        <b>
+                            {demand:,.0f}
+                        </b>
+                        job records
+                    </div>
+
+                </div>
+                """
             )
-        else:
-            demand_text = (
-                "Demand data unavailable"
-            )
 
-        st.markdown(
-            f"""
-            **{index}. {skill}**
 
-            Focus on building practical capability in
-            **{skill}**. Current JobInsight market data
-            contains approximately **{demand_text}**
-            associated with this skill.
-            """
-        )
+# ============================================================
+# DEVELOPMENT PATH
+# ============================================================
 
-else:
+render_html(
+    """
+    <div class="section-title">
+        🛣️ Suggested Development Path
+    </div>
 
-    st.info(
-        "No immediate market-level skill gaps were identified."
+    <div class="section-subtitle">
+        A simple progression based on the detected skill gaps.
+    </div>
+    """
+)
+
+
+path_col1, path_col2, path_col3 = (
+    st.columns(3)
+)
+
+
+with path_col1:
+
+    render_html(
+        """
+        <div class="content-card">
+
+            <div class="card-heading">
+                01 · Strengthen Existing Skills
+            </div>
+
+            <div style="
+                color:#64748b;
+                font-size:13px;
+                line-height:1.7;
+            ">
+                Continue improving the skills already
+                present in your profile and use them
+                in projects or practical work.
+            </div>
+
+        </div>
+        """
+    )
+
+
+with path_col2:
+
+    render_html(
+        """
+        <div class="content-card">
+
+            <div class="card-heading">
+                02 · Close Priority Gaps
+            </div>
+
+            <div style="
+                color:#64748b;
+                font-size:13px;
+                line-height:1.7;
+            ">
+                Focus first on missing skills that are
+                both relevant to your selected job and
+                visible in broader market demand.
+            </div>
+
+        </div>
+        """
+    )
+
+
+with path_col3:
+
+    render_html(
+        """
+        <div class="content-card">
+
+            <div class="card-heading">
+                03 · Recheck Your Alignment
+            </div>
+
+            <div style="
+                color:#64748b;
+                font-size:13px;
+                line-height:1.7;
+            ">
+                Re-run Job Matcher and Career
+                Recommendations after updating
+                your profile with newly acquired skills.
+            </div>
+
+        </div>
+        """
     )
 
 
@@ -1046,69 +2466,97 @@ else:
 # ============================================================
 
 with st.expander(
-    "🧠 How Skill Gap Analysis works"
+    "🧠 How Skill Gap Analysis Works"
 ):
 
     st.markdown(
         """
-        ### Skill Gap Methodology
+        ### Candidate Skills
 
-        JobInsight uses the normalized skill vocabulary produced
-        by the NLP pipeline.
+        Candidate skills are taken from the profile generated
+        by the Resume Analyzer.
 
-        **Candidate skills**
+        ### Job-Specific Gap
 
-        Skills are extracted from the uploaded resume and
-        normalized before comparison.
+        The selected job's detected skills are compared with
+        the candidate's normalized skills.
 
-        **Job-specific gap**
+        **Skill coverage**
 
-        Candidate skills are compared against the skills extracted
-        for the selected job.
+        ```text
+        matched required skills
+        ----------------------- × 100
+        total required skills
+        ```
 
-        **Market-level gap**
+        ### Market-Level Gap
 
-        Candidate skills are compared against frequently detected
-        skills in the JobInsight job market.
+        The platform also compares candidate skills with
+        frequently detected skills in the processed job market.
 
-        **Coverage**
+        ### Priority Skills
 
-        Skill coverage is calculated as:
+        Missing skills are associated with their observed
+        market-demand counts where available.
 
-        `matched required skills / total required skills × 100`
-
-        The result is an analytical signal intended to help
-        candidates understand skill alignment. It is not a
-        guarantee of employment or hiring outcome.
+        This analysis is a decision-support signal. It does
+        not guarantee employment outcomes.
         """
     )
 
 
 # ============================================================
-# DATA STATUS
+# DATA SOURCES
 # ============================================================
 
 with st.expander(
-    "ℹ️ Data sources"
+    "ℹ️ Data Sources & Processing"
 ):
 
     st.write(
-        f"**Job-skill dataset:** {SKILLS_PATH}"
+        f"**Jobs:** {JOBS_PATH}"
     )
 
     st.write(
-        f"**Skill-demand dataset:** "
-        f"{SKILL_DEMAND_PATH}"
+        f"**Job skills:** {SKILLS_PATH}"
     )
 
     st.write(
-        f"**Normalized skill records:** "
-        f"{len(skill_df):,}"
-        if not skill_df.empty
-        else "Unavailable"
+        f"**Skill demand:** {SKILL_DEMAND_PATH}"
     )
 
     st.write(
-        f"**Market skills available:** "
-        f"{len(market_skills):,}"
+        f"**Candidate skills:** "
+        f"{len(candidate_skills)}"
     )
+
+    st.write(
+        f"**Target job skills:** "
+        f"{len(required_skills)}"
+    )
+
+    st.write(
+        f"**Target job coverage:** "
+        f"{coverage:.1f}%"
+    )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+render_html(
+    """
+    <div class="footer">
+
+        <b>JobInsight</b> · AI-Powered Job Market
+        Analytics & Career Recommendation Platform
+
+        <br>
+
+        Candidate skills · Job requirements ·
+        Market demand · Development priorities
+
+    </div>
+    """
+)

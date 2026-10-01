@@ -1,5 +1,7 @@
 from pathlib import Path
+import html
 import math
+
 import pandas as pd
 import streamlit as st
 
@@ -10,13 +12,30 @@ import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-JOBS_PATH = PROJECT_ROOT / "data" / "processed" / "jobs_normalized.parquet"
-SALARY_PATH = PROJECT_ROOT / "data" / "processed" / "salary_normalized.parquet"
-SKILLS_PATH = PROJECT_ROOT / "data" / "processed" / "job_skills_normalized.parquet"
+JOBS_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "jobs_normalized.parquet"
+)
+
+SALARY_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "salary_normalized.parquet"
+)
+
+SKILLS_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "job_skills_normalized.parquet"
+)
 
 
 # ============================================================
-# PAGE CONFIG
+# PAGE
 # ============================================================
 
 st.set_page_config(
@@ -27,59 +46,265 @@ st.set_page_config(
 
 
 # ============================================================
-# CUSTOM CSS
+# CSS
 # ============================================================
 
 st.markdown(
     """
     <style>
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 8% 0%,
+                rgba(99,102,241,.10),
+                transparent 27%
+            ),
+            radial-gradient(
+                circle at 92% 8%,
+                rgba(14,165,233,.08),
+                transparent 25%
+            ),
+            #f6f8fc;
+    }
+
+    [data-testid="stHeader"] {
+        background:transparent;
+    }
+
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #111827 0%,
+                #172554 55%,
+                #1e1b4b 100%
+            );
+    }
+
+    [data-testid="stSidebar"] * {
+        color:#f8fafc;
+    }
+
+    .block-container {
+        padding-top:2rem;
+        padding-bottom:3rem;
+        max-width:1450px;
+    }
+
+    .hero {
+        position:relative;
+        overflow:hidden;
+        padding:36px 40px;
+        border-radius:26px;
+        margin-bottom:25px;
+        color:white;
+
+        background:
+            radial-gradient(
+                circle at 85% 20%,
+                rgba(129,140,248,.40),
+                transparent 25%
+            ),
+            radial-gradient(
+                circle at 15% 90%,
+                rgba(56,189,248,.18),
+                transparent 28%
+            ),
+            linear-gradient(
+                135deg,
+                #111827,
+                #1e1b4b 55%,
+                #3730a3
+            );
+
+        box-shadow:
+            0 20px 50px rgba(15,23,42,.16);
+    }
+
+    .orb-one {
+        position:absolute;
+        width:170px;
+        height:170px;
+        border-radius:50%;
+        right:60px;
+        top:-80px;
+        background:rgba(129,140,248,.16);
+        border:1px solid rgba(255,255,255,.08);
+    }
+
+    .orb-two {
+        position:absolute;
+        width:90px;
+        height:90px;
+        border-radius:50%;
+        right:220px;
+        bottom:-45px;
+        background:rgba(56,189,248,.14);
+    }
+
+    .hero-kicker {
+        font-size:13px;
+        letter-spacing:.14em;
+        text-transform:uppercase;
+        font-weight:700;
+        color:#a5b4fc;
+        margin-bottom:8px;
+    }
+
+    .hero-title {
+        font-size:38px;
+        line-height:1.12;
+        font-weight:800;
+        margin:0;
+        position:relative;
+        z-index:2;
+    }
+
+    .hero-subtitle {
+        margin-top:12px;
+        max-width:900px;
+        font-size:16px;
+        line-height:1.7;
+        color:#dbeafe;
+        position:relative;
+        z-index:2;
+    }
+
+    .kpi-card {
+        background:rgba(255,255,255,.96);
+        border:1px solid #e2e8f0;
+        border-radius:20px;
+        padding:20px;
+        min-height:110px;
+        box-shadow:0 8px 24px rgba(15,23,42,.05);
+    }
+
+    .kpi-icon {
+        float:right;
+        font-size:22px;
+    }
+
+    .kpi-label {
+        font-size:11px;
+        text-transform:uppercase;
+        letter-spacing:.08em;
+        color:#64748b;
+        font-weight:700;
+    }
+
+    .kpi-value {
+        margin-top:8px;
+        font-size:26px;
+        font-weight:800;
+        color:#111827;
+    }
+
+    .section-title {
+        font-size:22px;
+        font-weight:800;
+        color:#111827;
+        margin:28px 0 8px;
+    }
+
+    .section-subtitle {
+        color:#64748b;
+        font-size:14px;
+        margin-bottom:16px;
+        line-height:1.6;
+    }
+
     .job-card {
-        padding: 22px;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        margin-bottom: 18px;
-        background: white;
+        background:rgba(255,255,255,.98);
+        border:1px solid #e2e8f0;
+        border-radius:23px;
+        padding:25px;
+        margin:15px 0;
+        box-shadow:0 10px 28px rgba(15,23,42,.055);
     }
 
     .job-title {
-        font-size: 22px;
-        font-weight: 700;
-        margin-bottom: 5px;
+        font-size:22px;
+        line-height:1.3;
+        font-weight:800;
+        color:#111827;
     }
 
     .company {
-        font-size: 15px;
-        color: #64748b;
-        margin-bottom: 12px;
+        color:#64748b;
+        font-size:14px;
+        margin-top:5px;
+        font-weight:600;
     }
 
-    .job-meta {
-        font-size: 14px;
-        color: #475569;
-        margin-bottom: 12px;
+    .meta-row {
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:16px;
     }
 
-    .skill-chip {
-        display: inline-block;
-        padding: 5px 10px;
-        margin: 3px;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #3730a3;
-        font-size: 12px;
-        font-weight: 600;
+    .meta-chip {
+        display:inline-block;
+        padding:7px 11px;
+        border-radius:10px;
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+        color:#475569;
+        font-size:12px;
+        font-weight:600;
     }
 
     .salary {
-        font-size: 17px;
-        font-weight: 700;
-        color: #166534;
+        margin-top:17px;
+        font-size:17px;
+        font-weight:800;
+        color:#047857;
+    }
+
+    .skill-wrap {
+        display:flex;
+        flex-wrap:wrap;
+        gap:7px;
+        margin-top:9px;
+    }
+
+    .skill-chip {
+        display:inline-block;
+        padding:6px 11px;
+        border-radius:999px;
+        background:#eef2ff;
+        border:1px solid #c7d2fe;
+        color:#4338ca;
+        font-size:11px;
+        font-weight:650;
     }
 
     .description {
-        color: #475569;
-        line-height: 1.6;
+        margin-top:17px;
+        color:#475569;
+        line-height:1.65;
+        font-size:13px;
     }
+
+    .result-box {
+        background:white;
+        border:1px solid #e2e8f0;
+        border-radius:16px;
+        padding:13px 17px;
+        color:#64748b;
+        font-size:13px;
+        margin:12px 0;
+    }
+
+    .footer {
+        margin-top:45px;
+        padding:25px;
+        text-align:center;
+        color:#64748b;
+        font-size:12px;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -87,238 +312,603 @@ st.markdown(
 
 
 # ============================================================
-# LOAD DATA
+# HELPERS
 # ============================================================
 
-@st.cache_data
-def load_jobs():
-
-    if not JOBS_PATH.exists():
-        st.error(f"Job dataset not found: {JOBS_PATH}")
-        st.stop()
-
-    jobs = pd.read_parquet(JOBS_PATH)
-
-    # Make sure date is datetime
-    if "date_posted" in jobs.columns:
-        jobs["date_posted"] = pd.to_datetime(
-            jobs["date_posted"],
-            errors="coerce"
-        )
-
-    # --------------------------------------------------------
-    # Add normalized annual salary
-    # --------------------------------------------------------
-
-    if SALARY_PATH.exists():
-
-        salary = pd.read_parquet(SALARY_PATH)
-
-        if len(salary) == len(jobs):
-
-            if "annual_salary_min_usd" in salary.columns:
-                jobs["annual_salary_min_usd"] = (
-                    pd.to_numeric(
-                        salary["annual_salary_min_usd"],
-                        errors="coerce"
-                    ).values
-                )
-
-            if "annual_salary_max_usd" in salary.columns:
-                jobs["annual_salary_max_usd"] = (
-                    pd.to_numeric(
-                        salary["annual_salary_max_usd"],
-                        errors="coerce"
-                    ).values
-                )
-
-    # --------------------------------------------------------
-    # Add normalized skills
-    # --------------------------------------------------------
-
-    if SKILLS_PATH.exists():
-
-        skills = pd.read_parquet(SKILLS_PATH)
-
-        if len(skills) == len(jobs) and "skills" in skills.columns:
-            jobs["normalized_skills"] = skills["skills"].values
-
-        else:
-            jobs["normalized_skills"] = [[] for _ in range(len(jobs))]
-
-    else:
-        jobs["normalized_skills"] = [[] for _ in range(len(jobs))]
-
-    return jobs
+def render_html(content):
+    st.html(content)
 
 
-jobs = load_jobs()
+def clean_text(value, default="Not specified"):
 
+    if value is None:
+        return default
 
-# ============================================================
-# HELPER FUNCTIONS
-# ============================================================
+    try:
+        if pd.isna(value):
+            return default
+    except Exception:
+        pass
+
+    text = str(value).strip()
+
+    if not text:
+        return default
+
+    if text.lower() in {
+        "nan",
+        "none",
+        "null",
+    }:
+        return default
+
+    return text
+
 
 def clean_list(value):
 
     if value is None:
         return []
 
-    if isinstance(value, (list, tuple, set)):
-        return [str(x) for x in value if str(x).strip()]
+    if isinstance(
+        value,
+        (list, tuple, set),
+    ):
 
-    # Handle numpy arrays without importing numpy
-    if hasattr(value, "tolist"):
-        try:
-            converted = value.tolist()
+        return [
+            str(x).strip()
+            for x in value
+            if str(x).strip()
+        ]
 
-            if isinstance(converted, list):
-                return [
-                    str(x)
-                    for x in converted
-                    if str(x).strip()
-                ]
-        except Exception:
-            pass
+    try:
 
-    if pd.isna(value):
-        return []
+        if pd.isna(value):
+            return []
+
+    except Exception:
+        pass
 
     text = str(value).strip()
 
-    if not text:
+    if not text or text.lower() in {
+        "nan",
+        "none",
+        "null",
+        "[]",
+    }:
         return []
 
-    return [text]
+    text = (
+        text.replace("[", "")
+        .replace("]", "")
+        .replace("'", "")
+        .replace('"', "")
+    )
+
+    return [
+        item.strip()
+        for item in text.split(",")
+        if item.strip()
+    ]
 
 
 def format_salary(row):
 
-    minimum = row.get("annual_salary_min_usd")
-    maximum = row.get("annual_salary_max_usd")
+    minimum = row.get(
+        "annual_salary_min_usd"
+    )
 
-    # Safely convert values to numbers
+    maximum = row.get(
+        "annual_salary_max_usd"
+    )
+
     try:
         minimum = float(minimum)
-        if pd.isna(minimum):
-            minimum = None
-    except (TypeError, ValueError):
+    except Exception:
         minimum = None
 
     try:
         maximum = float(maximum)
-        if pd.isna(maximum):
-            maximum = None
-    except (TypeError, ValueError):
+    except Exception:
         maximum = None
 
-    # Both values available
-    if minimum is not None and maximum is not None:
-        return f"${minimum:,.0f} – ${maximum:,.0f} / year"
+    if (
+        minimum is not None
+        and minimum > 0
+        and maximum is not None
+        and maximum > 0
+    ):
 
-    # Only minimum available
-    if minimum is not None:
-        return f"From ${minimum:,.0f} / year"
+        return (
+            f"${minimum:,.0f}"
+            f" – "
+            f"${maximum:,.0f}"
+            f" / year"
+        )
 
-    # Only maximum available
-    if maximum is not None:
-        return f"Up to ${maximum:,.0f} / year"
+    if minimum is not None and minimum > 0:
 
-    # No salary information
+        return (
+            f"${minimum:,.0f}+ / year"
+        )
+
+    if maximum is not None and maximum > 0:
+
+        return (
+            f"Up to ${maximum:,.0f} / year"
+        )
+
     return "Salary not specified"
 
 
 def format_date(value):
 
-    if pd.isna(value):
+    if value is None:
         return "Date not available"
 
     try:
-        return pd.to_datetime(value).strftime("%b %d, %Y")
+
+        if pd.isna(value):
+            return "Date not available"
+
+        return pd.to_datetime(
+            value
+        ).strftime("%b %d, %Y")
+
     except Exception:
+
         return "Date not available"
 
 
-def truncate_text(text, length=350):
+def truncate_text(
+    value,
+    length=360,
+):
 
-    if pd.isna(text):
-        return ""
-
-    text = str(text).strip()
+    text = clean_text(
+        value,
+        "",
+    )
 
     if len(text) <= length:
         return text
 
-    return text[:length].rsplit(" ", 1)[0] + "..."
+    return (
+        text[:length]
+        .rsplit(" ", 1)[0]
+        + "..."
+    )
 
 
 # ============================================================
-# HEADER
+# DATA
 # ============================================================
 
-st.title("🔎 Job Explorer")
+@st.cache_data
+def load_jobs():
 
-st.markdown(
+    jobs = pd.read_parquet(
+        JOBS_PATH
+    )
+
+    if "date_posted" in jobs.columns:
+
+        jobs["date_posted"] = pd.to_datetime(
+            jobs["date_posted"],
+            errors="coerce",
+        )
+
+    if SALARY_PATH.exists():
+
+        salary = pd.read_parquet(
+            SALARY_PATH
+        )
+
+        if len(salary) == len(jobs):
+
+            for column in [
+                "annual_salary_min_usd",
+                "annual_salary_max_usd",
+            ]:
+
+                if column in salary.columns:
+
+                    jobs[column] = pd.to_numeric(
+                        salary[column],
+                        errors="coerce",
+                    ).values
+
+    if SKILLS_PATH.exists():
+
+        skill_df = pd.read_parquet(
+            SKILLS_PATH
+        )
+
+        if "normalized_skills" not in jobs.columns:
+
+            if (
+                "job_index"
+                in skill_df.columns
+            ):
+
+                mapping = {}
+
+                for _, row in skill_df.iterrows():
+
+                    index = row[
+                        "job_index"
+                    ]
+
+                    values = clean_list(
+                        row.get(
+                            "skills",
+                            row.get(
+                                "normalized_skills",
+                                [],
+                            ),
+                        )
+                    )
+
+                    mapping.setdefault(
+                        str(index),
+                        [],
+                    ).extend(values)
+
+                jobs[
+                    "normalized_skills"
+                ] = [
+                    list(
+                        dict.fromkeys(
+                            mapping.get(
+                                str(index),
+                                [],
+                            )
+                        )
+                    )
+                    for index in jobs.index
+                ]
+
+            elif (
+                len(skill_df)
+                == len(jobs)
+            ):
+
+                source_column = (
+                    "normalized_skills"
+                    if "normalized_skills"
+                    in skill_df.columns
+                    else "skills"
+                    if "skills"
+                    in skill_df.columns
+                    else None
+                )
+
+                if source_column:
+
+                    jobs[
+                        "normalized_skills"
+                    ] = skill_df[
+                        source_column
+                    ].apply(clean_list).values
+
+    return jobs
+
+
+try:
+
+    jobs = load_jobs()
+
+except Exception as exc:
+
+    st.error(
+        f"Could not load job data: {exc}"
+    )
+
+    st.stop()
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.html(
+        """
+        <div style="
+            padding:10px 4px 24px;
+            text-align:center;
+        ">
+
+            <div style="
+                width:64px;
+                height:64px;
+                border-radius:20px;
+                margin:auto;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #6366f1,
+                        #38bdf8
+                    );
+                font-size:30px;
+                box-shadow:
+                    0 12px 30px
+                    rgba(99,102,241,.35);
+            ">
+                🔎
+            </div>
+
+            <div style="
+                margin-top:12px;
+                font-size:18px;
+                font-weight:800;
+            ">
+                Job Explorer
+            </div>
+
+            <div style="
+                margin-top:5px;
+                font-size:12px;
+                opacity:.70;
+            ">
+                Explore the global job market
+            </div>
+
+        </div>
+        """
+    )
+
+    st.page_link(
+        "app.py",
+        label="Home",
+        icon="🏠",
+    )
+
+    st.page_link(
+        "pages/1_Job_Explorer.py",
+        label="Job Explorer",
+        icon="🔎",
+    )
+
+    st.page_link(
+        "pages/2_Market_Intelligence.py",
+        label="Market Intelligence",
+        icon="📊",
+    )
+
+    st.page_link(
+        "pages/3_Skills_Intelligence.py",
+        label="Skills Intelligence",
+        icon="🧠",
+    )
+
+    st.page_link(
+        "pages/4_Salary_Intelligence.py",
+        label="Salary Intelligence",
+        icon="💰",
+    )
+
+    st.page_link(
+        "pages/5_Resume_Analyzer.py",
+        label="Resume Analyzer",
+        icon="📄",
+    )
+
+    st.page_link(
+        "pages/6_Job_Matcher.py",
+        label="Job Matcher",
+        icon="🎯",
+    )
+
+    st.page_link(
+        "pages/7_Skill_Gap.py",
+        label="Skill Gap",
+        icon="🧩",
+    )
+
+    st.page_link(
+        "pages/8_Career_Recommendations.py",
+        label="Career Recommendations",
+        icon="🚀",
+    )
+
+    st.page_link(
+        "pages/9_Profile.py",
+        label="Profile",
+        icon="👤",
+    )
+
+    st.html(
+        """
+        <div style="
+            margin-top:25px;
+            padding:15px;
+            border-radius:16px;
+            background:rgba(255,255,255,.07);
+            border:1px solid rgba(255,255,255,.08);
+            font-size:11px;
+            line-height:1.7;
+            color:#cbd5e1;
+        ">
+
+            <div style="
+                font-size:12px;
+                font-weight:800;
+                color:#ffffff;
+                margin-bottom:10px;
+            ">
+                Explorer Workflow
+            </div>
+
+            <div>🔎 Search jobs</div>
+            <div>↓</div>
+            <div>🎛️ Apply filters</div>
+            <div>↓</div>
+            <div>💼 Explore opportunities</div>
+            <div>↓</div>
+            <div>🧠 Inspect skills</div>
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# HERO
+# ============================================================
+
+render_html(
     """
-    Explore the job market using JobInsight's normalized job dataset.
-    Search across job titles, companies, descriptions, and detected skills.
+    <div class="hero">
+
+        <div class="orb-one"></div>
+        <div class="orb-two"></div>
+
+        <div class="hero-kicker">
+            JOBINSIGHT · JOB MARKET EXPLORER
+        </div>
+
+        <div class="hero-title">
+            Explore opportunities across the job market.
+        </div>
+
+        <div class="hero-subtitle">
+            Search normalized job postings by title, company,
+            skills, location, experience, work model, salary
+            and employment type.
+        </div>
+
+    </div>
     """
 )
 
 
 # ============================================================
-# KPI ROW
+# KPI
 # ============================================================
 
 total_jobs = len(jobs)
 
 salary_count = (
-    jobs["annual_salary_min_usd"].notna().sum()
-    if "annual_salary_min_usd" in jobs.columns
+    jobs[
+        "annual_salary_min_usd"
+    ].notna().sum()
+    if "annual_salary_min_usd"
+    in jobs.columns
     else 0
 )
 
 remote_count = (
-    (jobs["work_model"] == "Remote").sum()
-    if "work_model" in jobs.columns
+    (
+        jobs["work_model"]
+        == "Remote"
+    ).sum()
+    if "work_model"
+    in jobs.columns
     else 0
 )
 
 company_count = (
-    jobs["company_name"].nunique()
-    if "company_name" in jobs.columns
+    jobs[
+        "company_name"
+    ].nunique()
+    if "company_name"
+    in jobs.columns
     else 0
 )
 
+
 k1, k2, k3, k4 = st.columns(4)
 
-k1.metric("Jobs Available", f"{total_jobs:,}")
-k2.metric(
-    "Salary Records",
-    f"{salary_count:,}"
-)
-k3.metric(
-    "Remote Jobs",
-    f"{remote_count:,}"
-)
-k4.metric(
-    "Companies",
-    f"{company_count:,}"
-)
+
+with k1:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">💼</div>
+            <div class="kpi-label">Jobs Available</div>
+            <div class="kpi-value">
+                {total_jobs:,}
+            </div>
+        </div>
+        """
+    )
 
 
-st.divider()
+with k2:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-label">Salary Records</div>
+            <div class="kpi-value">
+                {salary_count:,}
+            </div>
+        </div>
+        """
+    )
+
+
+with k3:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">🌐</div>
+            <div class="kpi-label">Remote Jobs</div>
+            <div class="kpi-value">
+                {remote_count:,}
+            </div>
+        </div>
+        """
+    )
+
+
+with k4:
+
+    render_html(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">🏢</div>
+            <div class="kpi-label">Companies</div>
+            <div class="kpi-value">
+                {company_count:,}
+            </div>
+        </div>
+        """
+    )
 
 
 # ============================================================
-# SEARCH + FILTERS
+# SEARCH
 # ============================================================
 
-st.subheader("Search & Filters")
+render_html(
+    """
+    <div class="section-title">
+        🔎 Search & Filter Jobs
+    </div>
+
+    <div class="section-subtitle">
+        Combine keyword search with structured market filters.
+    </div>
+    """
+)
+
 
 search_query = st.text_input(
-    "🔍 Search jobs",
-    placeholder="Try: Data Scientist, Python, AWS, Project Manager...",
+    "Search jobs",
+    placeholder=(
+        "Try: Data Scientist, Python, AWS, "
+        "Project Manager..."
+    ),
 )
 
 
@@ -327,69 +917,91 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
 
-    countries = ["All"] + sorted(
-        jobs["country"]
-        .dropna()
-        .unique()
-        .tolist()
-    )
+    countries = ["All"]
+
+    if "country" in jobs.columns:
+
+        countries += sorted(
+            jobs["country"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
 
     selected_country = st.selectbox(
         "Country",
-        countries
+        countries,
     )
 
 
 with col2:
 
-    experiences = ["All"] + sorted(
-        jobs["experience_level"]
-        .dropna()
-        .unique()
-        .tolist()
-    )
+    experiences = ["All"]
+
+    if "experience_level" in jobs.columns:
+
+        experiences += sorted(
+            jobs[
+                "experience_level"
+            ]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
 
     selected_experience = st.selectbox(
         "Experience Level",
-        experiences
+        experiences,
     )
 
 
 with col3:
 
-    work_models = ["All"] + sorted(
-        jobs["work_model"]
-        .dropna()
-        .unique()
-        .tolist()
-    )
+    work_models = ["All"]
+
+    if "work_model" in jobs.columns:
+
+        work_models += sorted(
+            jobs[
+                "work_model"
+            ]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
 
     selected_work_model = st.selectbox(
         "Work Model",
-        work_models
+        work_models,
     )
 
 
 with col4:
 
-    employment_types = ["All"] + sorted(
-        jobs["employment_type"]
-        .dropna()
-        .unique()
-        .tolist()
-    )
+    employment_types = ["All"]
+
+    if "employment_type" in jobs.columns:
+
+        employment_types += sorted(
+            jobs[
+                "employment_type"
+            ]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
 
     selected_employment = st.selectbox(
         "Employment Type",
-        employment_types
+        employment_types,
     )
 
 
-# ============================================================
-# SECOND FILTER ROW
-# ============================================================
-
-col5, col6, col7, col8 = st.columns(4)
+col5, col6 = st.columns(2)
 
 
 with col5:
@@ -397,60 +1009,26 @@ with col5:
     min_salary_filter = st.number_input(
         "Minimum annual salary ($)",
         min_value=0,
-        max_value=1_000_000,
         value=0,
-        step=5_000,
+        step=5000,
     )
 
 
 with col6:
 
-    max_salary_filter = st.number_input(
-        "Maximum annual salary ($)",
-        min_value=0,
-        max_value=1_000_000,
-        value=0,
-        step=5_000,
-        help="Set to 0 to disable this filter."
-    )
-
-
-with col7:
-
-    sort_options = {
-        "Relevance": "relevance",
-        "Newest": "newest",
-        "Salary: High to Low": "salary_high",
-        "Salary: Low to High": "salary_low",
-    }
-
-    sort_label = st.selectbox(
-        "Sort By",
-        list(sort_options.keys())
-    )
-
-    sort_mode = sort_options[sort_label]
-
-
-with col8:
-
     page_size = st.selectbox(
         "Jobs per page",
-        [10, 20, 30, 50],
-        index=1
+        [5, 10, 20, 30],
+        index=1,
     )
 
 
 # ============================================================
-# APPLY FILTERS
+# FILTER
 # ============================================================
 
 filtered = jobs.copy()
 
-
-# ------------------------------------------------------------
-# Text search
-# ------------------------------------------------------------
 
 if search_query.strip():
 
@@ -460,222 +1038,107 @@ if search_query.strip():
         "title",
         "normalized_title",
         "company_name",
-        "industry",
-        "function",
         "job_description",
-        "skills_required",
+        "responsibilities",
         "minimum_qualifications",
         "preferred_qualifications",
-        "responsibilities",
-    ]
-
-    existing_columns = [
-        c for c in searchable_columns
-        if c in filtered.columns
+        "industry",
+        "function",
+        "normalized_skills",
     ]
 
     mask = pd.Series(
         False,
-        index=filtered.index
+        index=filtered.index,
     )
 
-    for column in existing_columns:
+    for column in searchable_columns:
 
-        mask = mask | (
+        if column not in filtered.columns:
+            continue
+
+        mask |= (
             filtered[column]
             .fillna("")
             .astype(str)
             .str.lower()
             .str.contains(
                 query,
-                regex=False
+                regex=False,
             )
         )
-
-    # Also search normalized skills
-    if "normalized_skills" in filtered.columns:
-
-        skill_mask = filtered["normalized_skills"].apply(
-            lambda skills: query in " ".join(
-                clean_list(skills)
-            ).lower()
-        )
-
-        mask = mask | skill_mask
 
     filtered = filtered[mask]
 
 
-# ------------------------------------------------------------
-# Country
-# ------------------------------------------------------------
-
 if selected_country != "All":
 
     filtered = filtered[
-        filtered["country"] == selected_country
+        filtered["country"].astype(str)
+        == selected_country
     ]
 
-
-# ------------------------------------------------------------
-# Experience
-# ------------------------------------------------------------
 
 if selected_experience != "All":
 
     filtered = filtered[
-        filtered["experience_level"] == selected_experience
+        filtered[
+            "experience_level"
+        ].astype(str)
+        == selected_experience
     ]
 
-
-# ------------------------------------------------------------
-# Work model
-# ------------------------------------------------------------
 
 if selected_work_model != "All":
 
     filtered = filtered[
-        filtered["work_model"] == selected_work_model
+        filtered[
+            "work_model"
+        ].astype(str)
+        == selected_work_model
     ]
 
-
-# ------------------------------------------------------------
-# Employment type
-# ------------------------------------------------------------
 
 if selected_employment != "All":
 
     filtered = filtered[
-        filtered["employment_type"] == selected_employment
+        filtered[
+            "employment_type"
+        ].astype(str)
+        == selected_employment
     ]
 
 
-# ------------------------------------------------------------
-# Salary filters
-# ------------------------------------------------------------
+if min_salary_filter > 0:
 
-if "annual_salary_min_usd" in filtered.columns:
-
-    if min_salary_filter > 0:
+    if "annual_salary_min_usd" in filtered.columns:
 
         filtered = filtered[
-            filtered["annual_salary_min_usd"].fillna(0)
+            pd.to_numeric(
+                filtered[
+                    "annual_salary_min_usd"
+                ],
+                errors="coerce",
+            )
             >= min_salary_filter
         ]
 
-    if max_salary_filter > 0:
-
-        filtered = filtered[
-            filtered["annual_salary_min_usd"].fillna(
-                float("inf")
-            )
-            <= max_salary_filter
-        ]
-
 
 # ============================================================
-# SORTING
-# ============================================================
-
-if sort_mode == "newest":
-
-    filtered = filtered.sort_values(
-        "date_posted",
-        ascending=False,
-        na_position="last"
-    )
-
-elif sort_mode == "salary_high":
-
-    if "annual_salary_min_usd" in filtered.columns:
-
-        filtered = filtered.sort_values(
-            "annual_salary_min_usd",
-            ascending=False,
-            na_position="last"
-        )
-
-elif sort_mode == "salary_low":
-
-    if "annual_salary_min_usd" in filtered.columns:
-
-        filtered = filtered.sort_values(
-            "annual_salary_min_usd",
-            ascending=True,
-            na_position="last"
-        )
-
-else:
-
-    # Relevance is primarily driven by text search.
-    # If no search is supplied, show newest jobs.
-    if search_query.strip() and "title" in filtered.columns:
-
-        query_words = [
-            word.lower()
-            for word in search_query.split()
-            if word.strip()
-        ]
-
-        def relevance_score(row):
-
-            title = str(
-                row.get("title", "")
-            ).lower()
-
-            company = str(
-                row.get("company_name", "")
-            ).lower()
-
-            description = str(
-                row.get("job_description", "")
-            ).lower()
-
-            score = 0
-
-            for word in query_words:
-
-                if word in title:
-                    score += 5
-
-                if word in company:
-                    score += 2
-
-                if word in description:
-                    score += 1
-
-            return score
-
-        filtered = filtered.copy()
-
-        filtered["_relevance"] = filtered.apply(
-            relevance_score,
-            axis=1
-        )
-
-        filtered = filtered.sort_values(
-            "_relevance",
-            ascending=False
-        )
-
-    elif "date_posted" in filtered.columns:
-
-        filtered = filtered.sort_values(
-            "date_posted",
-            ascending=False,
-            na_position="last"
-        )
-
-
-# ============================================================
-# RESULT SUMMARY
+# RESULTS
 # ============================================================
 
 result_count = len(filtered)
 
-st.markdown(
-    f"### {result_count:,} jobs found"
+render_html(
+    f"""
+    <div class="result-box">
+        <b>{result_count:,}</b>
+        jobs found with the current filters.
+    </div>
+    """
 )
+
 
 if result_count == 0:
 
@@ -693,24 +1156,19 @@ if result_count == 0:
 
 total_pages = max(
     1,
-    math.ceil(result_count / page_size)
+    math.ceil(
+        result_count / page_size
+    ),
 )
 
-if "job_explorer_page" not in st.session_state:
-    st.session_state.job_explorer_page = 1
 
 current_page = st.number_input(
     "Page",
     min_value=1,
     max_value=total_pages,
-    value=min(
-        st.session_state.job_explorer_page,
-        total_pages
-    ),
-    step=1
+    value=1,
+    step=1,
 )
-
-st.session_state.job_explorer_page = current_page
 
 
 start = (
@@ -719,7 +1177,9 @@ start = (
 
 end = start + page_size
 
-page_jobs = filtered.iloc[start:end]
+page_jobs = filtered.iloc[
+    start:end
+]
 
 
 st.caption(
@@ -735,146 +1195,171 @@ st.caption(
 
 for _, row in page_jobs.iterrows():
 
-    title = str(
+    title = clean_text(
         row.get(
-            "title",
-            "Untitled Position"
-        )
+            "title"
+        ),
+        "Untitled Position",
     )
 
-    company = str(
+    company = clean_text(
         row.get(
-            "company_name",
-            "Company not specified"
-        )
+            "company_name"
+        ),
+        "Company not specified",
     )
 
-    country = str(
+    country = clean_text(
         row.get(
-            "country",
-            "Unknown"
-        )
+            "country"
+        ),
+        "Unknown",
     )
 
-    work_model = str(
+    work_model = clean_text(
         row.get(
-            "work_model",
-            "Unknown"
-        )
+            "work_model"
+        ),
+        "Unknown",
     )
 
-    experience = str(
+    experience = clean_text(
         row.get(
-            "experience_level",
-            "Unknown"
-        )
+            "experience_level"
+        ),
+        "Unknown",
     )
 
-    employment = str(
+    employment = clean_text(
         row.get(
-            "employment_type",
-            "Unknown"
-        )
+            "employment_type"
+        ),
+        "Unknown",
     )
 
-    salary = format_salary(row)
+    salary = format_salary(
+        row
+    )
 
     date_posted = format_date(
-        row.get("date_posted")
+        row.get(
+            "date_posted"
+        )
     )
 
     description = truncate_text(
         row.get(
             "job_description",
-            ""
+            "",
         )
     )
 
     skills = clean_list(
         row.get(
             "normalized_skills",
-            []
+            [],
         )
     )
 
-    st.markdown(
-        '<div class="job-card">',
-        unsafe_allow_html=True
-    )
+    chips = ""
 
-    st.markdown(
-        f'<div class="job-title">{title}</div>',
-        unsafe_allow_html=True
-    )
+    for skill in skills[:12]:
 
-    st.markdown(
-        f'<div class="company">🏢 {company}</div>',
-        unsafe_allow_html=True
-    )
+        chips += (
+            '<span class="skill-chip">'
+            f'{html.escape(skill)}'
+            '</span>'
+        )
 
-    st.markdown(
+    if not chips:
+
+        chips = (
+            '<span style="'
+            'color:#94a3b8;'
+            'font-size:12px;'
+            '">'
+            'No detected skills'
+            '</span>'
+        )
+
+
+    render_html(
         f"""
-        <div class="job-meta">
-        🌍 {country}
-        &nbsp;&nbsp;•&nbsp;&nbsp;
-        💼 {work_model}
-        &nbsp;&nbsp;•&nbsp;&nbsp;
-        🎯 {experience}
-        &nbsp;&nbsp;•&nbsp;&nbsp;
-        📋 {employment}
-        &nbsp;&nbsp;•&nbsp;&nbsp;
-        📅 {date_posted}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        <div class="job-card">
 
-    st.markdown(
-        f'<div class="salary">💰 {salary}</div>',
-        unsafe_allow_html=True
-    )
+            <div class="job-title">
+                {html.escape(title)}
+            </div>
 
-    if skills:
+            <div class="company">
+                🏢 {html.escape(company)}
+            </div>
 
-        displayed_skills = skills[:12]
+            <div class="meta-row">
 
-        chips = "".join(
-            f'<span class="skill-chip">{skill}</span>'
-            for skill in displayed_skills
-        )
+                <span class="meta-chip">
+                    🌍 {html.escape(country)}
+                </span>
 
-        st.markdown(
-            f"""
-            <div style="margin-top:12px;">
-                <strong>Skills</strong><br>
+                <span class="meta-chip">
+                    💼 {html.escape(work_model)}
+                </span>
+
+                <span class="meta-chip">
+                    🎯 {html.escape(experience)}
+                </span>
+
+                <span class="meta-chip">
+                    📋 {html.escape(employment)}
+                </span>
+
+                <span class="meta-chip">
+                    📅 {html.escape(date_posted)}
+                </span>
+
+            </div>
+
+            <div class="salary">
+                💰 {html.escape(salary)}
+            </div>
+
+            <div style="
+                margin-top:16px;
+                font-size:11px;
+                text-transform:uppercase;
+                letter-spacing:.07em;
+                color:#64748b;
+                font-weight:800;
+            ">
+                Skills
+            </div>
+
+            <div class="skill-wrap">
                 {chips}
             </div>
-            """,
-            unsafe_allow_html=True
-        )
 
-    if description:
-
-        st.markdown(
-            f"""
-            <div class="description" style="margin-top:14px;">
-                {description}
+            <div class="description">
+                {html.escape(description)}
             </div>
-            """,
-            unsafe_allow_html=True
+
+        </div>
+        """
+    )
+
+
+    with st.expander(
+        "View full job details"
+    ):
+
+        detail_col1, detail_col2 = (
+            st.columns(2)
         )
-
-    # --------------------------------------------------------
-    # Expandable details
-    # --------------------------------------------------------
-
-    with st.expander("View full job details"):
-
-        detail_col1, detail_col2 = st.columns(2)
 
         with detail_col1:
 
-            st.markdown("**Job Information**")
+            st.markdown(
+                "### Job Information"
+            )
 
             st.write(
                 f"**Title:** {title}"
@@ -886,22 +1371,25 @@ for _, row in page_jobs.iterrows():
 
             st.write(
                 f"**Industry:** "
-                f"{row.get('industry', 'Not specified')}"
+                f"{clean_text(row.get('industry'))}"
             )
 
             st.write(
                 f"**Function:** "
-                f"{row.get('function', 'Not specified')}"
+                f"{clean_text(row.get('function'))}"
             )
 
             st.write(
                 f"**Location:** "
-                f"{row.get('location_resolved', country)}"
+                f"{clean_text(row.get('location_resolved'), country)}"
             )
+
 
         with detail_col2:
 
-            st.markdown("**Requirements**")
+            st.markdown(
+                "### Requirements"
+            )
 
             st.write(
                 f"**Experience:** {experience}"
@@ -909,7 +1397,7 @@ for _, row in page_jobs.iterrows():
 
             st.write(
                 f"**Education:** "
-                f"{row.get('education_level', 'Not specified')}"
+                f"{clean_text(row.get('education_level'))}"
             )
 
             st.write(
@@ -924,105 +1412,99 @@ for _, row in page_jobs.iterrows():
                 f"**Salary:** {salary}"
             )
 
-        st.markdown("---")
 
-        qualifications = row.get(
-            "minimum_qualifications",
-            ""
+        qualifications = clean_text(
+            row.get(
+                "minimum_qualifications",
+                "",
+            ),
+            "",
         )
 
-        if pd.notna(qualifications) and str(qualifications).strip():
-
-            st.markdown("**Minimum Qualifications**")
-
-            st.write(
-                str(qualifications)
-            )
-
-        preferred = row.get(
-            "preferred_qualifications",
-            ""
+        preferred = clean_text(
+            row.get(
+                "preferred_qualifications",
+                "",
+            ),
+            "",
         )
 
-        if pd.notna(preferred) and str(preferred).strip():
-
-            st.markdown("**Preferred Qualifications**")
-
-            st.write(
-                str(preferred)
-            )
-
-        responsibilities = row.get(
-            "responsibilities",
-            ""
+        responsibilities = clean_text(
+            row.get(
+                "responsibilities",
+                "",
+            ),
+            "",
         )
 
-        if pd.notna(responsibilities) and str(responsibilities).strip():
-
-            st.markdown("**Responsibilities**")
-
-            st.write(
-                str(responsibilities)
-            )
-
-        full_description = row.get(
-            "job_description",
-            ""
+        full_description = clean_text(
+            row.get(
+                "job_description",
+                "",
+            ),
+            "",
         )
 
-        if pd.notna(full_description) and str(full_description).strip():
 
-            st.markdown("**Full Job Description**")
+        if qualifications:
 
-            st.write(
-                str(full_description)
+            st.markdown(
+                "### Minimum Qualifications"
             )
 
-    st.markdown(
-        "</div>",
-        unsafe_allow_html=True
-    )
+            st.write(
+                qualifications
+            )
+
+
+        if preferred:
+
+            st.markdown(
+                "### Preferred Qualifications"
+            )
+
+            st.write(
+                preferred
+            )
+
+
+        if responsibilities:
+
+            st.markdown(
+                "### Responsibilities"
+            )
+
+            st.write(
+                responsibilities
+            )
+
+
+        if full_description:
+
+            st.markdown(
+                "### Full Job Description"
+            )
+
+            st.write(
+                full_description
+            )
 
 
 # ============================================================
-# PAGINATION CONTROLS
+# FOOTER
 # ============================================================
 
-st.divider()
+render_html(
+    """
+    <div class="footer">
 
-previous_col, info_col, next_col = st.columns(
-    [1, 2, 1]
+        <b>JobInsight</b> · AI-Powered Job Market
+        Analytics & Career Recommendation Platform
+
+        <br>
+
+        Search · Filter · Explore · Compare
+
+    </div>
+    """
 )
-
-with previous_col:
-
-    if current_page > 1:
-
-        if st.button(
-            "← Previous",
-            use_container_width=True
-        ):
-            st.session_state.job_explorer_page = (
-                current_page - 1
-            )
-            st.rerun()
-
-with info_col:
-
-    st.markdown(
-        f"<center>Page {current_page} of {total_pages}</center>",
-        unsafe_allow_html=True
-    )
-
-with next_col:
-
-    if current_page < total_pages:
-
-        if st.button(
-            "Next →",
-            use_container_width=True
-        ):
-            st.session_state.job_explorer_page = (
-                current_page + 1
-            )
-            st.rerun()

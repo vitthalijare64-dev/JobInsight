@@ -10,34 +10,12 @@ import streamlit as st
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
-SALARY_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "salary_normalized.parquet"
-)
-
-NORMALIZED_JOBS_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "jobs_normalized.parquet"
-)
-
-MODEL_DATA_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "salary_model_data.parquet"
-)
-
-FEATURE_IMPORTANCE_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "salary_feature_importance.csv"
-)
+SALARY_PATH = PROCESSED_DIR / "salary_normalized.parquet"
+NORMALIZED_JOBS_PATH = PROCESSED_DIR / "jobs_normalized.parquet"
+MODEL_DATA_PATH = PROCESSED_DIR / "salary_model_data.parquet"
+FEATURE_IMPORTANCE_PATH = PROCESSED_DIR / "salary_feature_importance.csv"
 
 
 # ============================================================
@@ -48,35 +26,122 @@ st.set_page_config(
     page_title="Salary Intelligence | JobInsight",
     page_icon="💰",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
 # ============================================================
-# CUSTOM CSS
+# GLOBAL STYLE
 # ============================================================
 
 st.markdown(
     """
     <style>
+    [data-testid="stAppViewContainer"] {
+        background: #f5f7fb;
+    }
+
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #111827 0%, #1e293b 100%);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #e5e7eb;
+    }
+
+    .block-container {
+        max-width: 1450px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+
+    div[data-testid="stMetric"] {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 18px 20px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+    }
+
+    div[data-testid="stMetricLabel"] {
+        color: #64748b;
+    }
+
+    div[data-testid="stMetricValue"] {
+        color: #0f172a;
+    }
+
+    .section-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 1.5rem 0 .25rem 0;
+    }
+
+    .section-subtitle {
+        color: #64748b;
+        font-size: .94rem;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
 
     .salary-card {
-        padding: 20px;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
         background: white;
-        margin-bottom: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
     }
 
-    .salary-value {
-        font-size: 28px;
+    .salary-card-title {
+        font-size: 1.25rem;
         font-weight: 800;
+        color: #0f172a;
     }
 
-    .salary-label {
+    .salary-card-label {
         color: #64748b;
-        font-size: 14px;
+        font-size: .9rem;
+        margin-top: 10px;
     }
 
+    .salary-card-value {
+        color: #2563eb;
+        font-size: 2.15rem;
+        font-weight: 900;
+        margin: 6px 0;
+    }
+
+    .model-card {
+        background: linear-gradient(135deg, #0f172a, #1e3a8a);
+        border-radius: 20px;
+        padding: 24px;
+        color: white;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
+    }
+
+    .model-card-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+
+    .model-card-text {
+        color: #cbd5e1;
+        font-size: .9rem;
+        line-height: 1.6;
+    }
+
+    .footer {
+        text-align: center;
+        color: #94a3b8;
+        font-size: .82rem;
+        padding: 30px 0 10px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -84,16 +149,14 @@ st.markdown(
 
 
 # ============================================================
-# LOAD SALARY + NORMALIZED JOB DATA
+# DATA LOADING
 # ============================================================
 
 @st.cache_data
 def load_salary_data():
 
     if not SALARY_PATH.exists():
-        st.error(
-            f"Salary dataset not found:\n{SALARY_PATH}"
-        )
+        st.error(f"Salary dataset not found:\n{SALARY_PATH}")
         st.stop()
 
     if not NORMALIZED_JOBS_PATH.exists():
@@ -103,13 +166,8 @@ def load_salary_data():
         )
         st.stop()
 
-    salary = pd.read_parquet(
-        SALARY_PATH
-    )
-
-    jobs = pd.read_parquet(
-        NORMALIZED_JOBS_PATH
-    )
+    salary = pd.read_parquet(SALARY_PATH)
+    jobs = pd.read_parquet(NORMALIZED_JOBS_PATH)
 
     if "annual_salary_min_usd" not in salary.columns:
         st.error(
@@ -117,11 +175,6 @@ def load_salary_data():
             "in salary_normalized.parquet."
         )
         st.stop()
-
-    # --------------------------------------------------------
-    # Reset indexes so both datasets align row-by-row.
-    # Both were generated from the same 112,816-row dataset.
-    # --------------------------------------------------------
 
     salary = salary.reset_index(drop=True)
     jobs = jobs.reset_index(drop=True)
@@ -133,25 +186,16 @@ def load_salary_data():
         )
         st.stop()
 
-    # --------------------------------------------------------
-    # Salary columns
-    # --------------------------------------------------------
-
     salary["annual_salary_min_usd"] = pd.to_numeric(
         salary["annual_salary_min_usd"],
         errors="coerce",
     )
 
     if "annual_salary_max_usd" in salary.columns:
-
         salary["annual_salary_max_usd"] = pd.to_numeric(
             salary["annual_salary_max_usd"],
             errors="coerce",
         )
-
-    # --------------------------------------------------------
-    # Use normalized categories from jobs_normalized.parquet
-    # --------------------------------------------------------
 
     normalized_columns = [
         "title",
@@ -168,19 +212,11 @@ def load_salary_data():
     ]
 
     for column in normalized_columns:
-
         if column in jobs.columns:
             salary[column] = jobs[column].values
 
     return salary
 
-
-salary = load_salary_data()
-
-
-# ============================================================
-# LOAD MODEL DATA
-# ============================================================
 
 @st.cache_data
 def load_model_data():
@@ -188,12 +224,9 @@ def load_model_data():
     if not MODEL_DATA_PATH.exists():
         return pd.DataFrame()
 
-    data = pd.read_parquet(
-        MODEL_DATA_PATH
-    )
+    data = pd.read_parquet(MODEL_DATA_PATH)
 
     if "annual_salary_min_usd" in data.columns:
-
         data["annual_salary_min_usd"] = pd.to_numeric(
             data["annual_salary_min_usd"],
             errors="coerce",
@@ -202,25 +235,19 @@ def load_model_data():
     return data
 
 
-model_data = load_model_data()
-
-
-# ============================================================
-# LOAD FEATURE IMPORTANCE
-# ============================================================
-
 @st.cache_data
 def load_feature_importance():
 
     if not FEATURE_IMPORTANCE_PATH.exists():
         return pd.DataFrame()
 
-    return pd.read_csv(
-        FEATURE_IMPORTANCE_PATH
-    )
+    return pd.read_csv(FEATURE_IMPORTANCE_PATH)
 
 
-feature_importance = load_feature_importance()
+with st.spinner("Loading salary intelligence..."):
+    salary = load_salary_data()
+    model_data = load_model_data()
+    feature_importance = load_feature_importance()
 
 
 # ============================================================
@@ -232,19 +259,15 @@ valid_salary = salary[
 ].copy()
 
 
-# ============================================================
-# VISUALIZATION RANGE
-# ============================================================
-
 if not valid_salary.empty:
 
     lower_bound = valid_salary[
         "annual_salary_min_usd"
-    ].quantile(0.01)
+    ].quantile(.01)
 
     upper_bound = valid_salary[
         "annual_salary_min_usd"
-    ].quantile(0.99)
+    ].quantile(.99)
 
     visualization_salary = valid_salary[
         valid_salary["annual_salary_min_usd"].between(
@@ -257,21 +280,203 @@ else:
 
     lower_bound = 0
     upper_bound = 0
-
     visualization_salary = valid_salary.copy()
 
 
 # ============================================================
-# HEADER
+# SIDEBAR
 # ============================================================
 
-st.title("💰 Salary Intelligence")
+with st.sidebar:
+    st.html(
+        """
+        <div style="
+            padding:10px 4px 24px 4px;
+            text-align:center;
+        ">
 
-st.markdown(
+            <div style="
+                width:64px;
+                height:64px;
+                border-radius:20px;
+                margin:auto;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                background:
+                    linear-gradient(
+                        135deg,
+                        #6366f1,
+                        #38bdf8
+                    );
+                font-size:30px;
+                box-shadow:
+                    0 12px 30px
+                    rgba(99,102,241,.35);
+            ">
+                💰
+            </div>
+
+            <div style="
+                margin-top:12px;
+                font-size:18px;
+                font-weight:800;
+            ">
+                Salary Intelligence
+            </div>
+
+            <div style="
+                margin-top:5px;
+                font-size:12px;
+                opacity:.70;
+            ">
+                Compensation & salary analytics
+            </div>
+
+        </div>
+        """
+    )
+
+    st.markdown("### Salary Filters")
+
+    if "experience_level" in valid_salary.columns:
+
+        experience_options = ["All"] + sorted(
+            valid_salary["experience_level"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        selected_experience = st.selectbox(
+            "Experience Level",
+            experience_options,
+        )
+
+    else:
+        selected_experience = "All"
+
+    if "work_model" in valid_salary.columns:
+
+        work_options = ["All"] + sorted(
+            valid_salary["work_model"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        selected_work_model = st.selectbox(
+            "Work Model",
+            work_options,
+        )
+
+    else:
+        selected_work_model = "All"
+
+    st.markdown("---")
+
+    st.caption(
+        "Filters affect the salary comparisons shown below."
+    )
+
+
+# ============================================================
+# FILTERED DATA
+# ============================================================
+
+filtered_salary = valid_salary.copy()
+
+if (
+    selected_experience != "All"
+    and "experience_level" in filtered_salary.columns
+):
+
+    filtered_salary = filtered_salary[
+        filtered_salary["experience_level"]
+        == selected_experience
+    ]
+
+
+if (
+    selected_work_model != "All"
+    and "work_model" in filtered_salary.columns
+):
+
+    filtered_salary = filtered_salary[
+        filtered_salary["work_model"]
+        == selected_work_model
+    ]
+
+
+# ============================================================
+# HERO
+# ============================================================
+
+st.html(
     """
-    Explore salary distributions, salary differences across job
-    characteristics, and the machine-learning salary prediction
-    model developed for JobInsight.
+    <div style="
+        position:relative;
+        overflow:hidden;
+        border-radius:28px;
+        padding:38px 42px;
+        margin-bottom:24px;
+        background:
+            radial-gradient(
+                circle at 90% 15%,
+                rgba(96,165,250,.25),
+                transparent 28%
+            ),
+            radial-gradient(
+                circle at 70% 100%,
+                rgba(129,140,248,.18),
+                transparent 30%
+            ),
+            linear-gradient(
+                135deg,
+                #0f172a 0%,
+                #1e3a8a 55%,
+                #312e81 100%
+            );
+        box-shadow:0 20px 50px rgba(15,23,42,.16);
+    ">
+
+        <div style="
+            display:inline-block;
+            padding:6px 12px;
+            border-radius:999px;
+            background:rgba(255,255,255,.12);
+            color:#dbeafe;
+            font-size:.78rem;
+            font-weight:700;
+            margin-bottom:14px;
+        ">
+            SALARY MARKET ANALYTICS
+        </div>
+
+        <div style="
+            font-size:2.6rem;
+            line-height:1.1;
+            font-weight:900;
+            color:white;
+            letter-spacing:-.04em;
+        ">
+            Salary Intelligence
+        </div>
+
+        <div style="
+            color:#cbd5e1;
+            font-size:1rem;
+            max-width:820px;
+            margin-top:10px;
+            line-height:1.7;
+        ">
+            Explore salary distributions, compensation patterns across
+            job characteristics, and the machine-learning model developed
+            to estimate annual minimum salary.
+        </div>
+    </div>
     """
 )
 
@@ -295,7 +500,7 @@ mean_salary = (
 )
 
 p75_salary = (
-    valid_salary["annual_salary_min_usd"].quantile(0.75)
+    valid_salary["annual_salary_min_usd"].quantile(.75)
     if salary_count
     else 0
 )
@@ -324,14 +529,20 @@ k4.metric(
 )
 
 
-st.divider()
-
-
 # ============================================================
 # SALARY DISTRIBUTION
 # ============================================================
 
-st.subheader("📊 Salary Distribution")
+st.html(
+    """
+    <div class="section-title">📊 Salary Distribution</div>
+    <div class="section-subtitle">
+        Distribution of annual minimum salary after annualization and
+        currency normalization. Extreme values are excluded from the
+        visualization range.
+    </div>
+    """
+)
 
 if not visualization_salary.empty:
 
@@ -343,16 +554,32 @@ if not visualization_salary.empty:
             "annual_salary_min_usd":
                 "Annual Minimum Salary (USD)"
         },
-        title="Annual Minimum Salary Distribution",
+    )
+
+    fig.update_traces(
+        hovertemplate=(
+            "Salary: $%{x:,.0f}"
+            "<br>Job records: %{y:,}"
+            "<extra></extra>"
+        )
     )
 
     fig.update_layout(
         height=500,
-        margin=dict(
-            l=20,
-            r=20,
-            t=60,
-            b=20,
+        margin=dict(l=20, r=25, t=20, b=30),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(
+            family="Inter, Arial, sans-serif",
+            color="#334155",
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
         ),
     )
 
@@ -361,12 +588,10 @@ if not visualization_salary.empty:
         use_container_width=True,
     )
 
-
 st.caption(
-    f"Visualization range: "
-    f"${lower_bound:,.0f} – ${upper_bound:,.0f}. "
-    "Extreme salary values outside the 1st–99th percentile "
-    "are excluded from this visualization."
+    f"Visualization range: ${lower_bound:,.0f} – "
+    f"${upper_bound:,.0f}. Extreme salary values outside the "
+    "1st–99th percentile are excluded from this visualization."
 )
 
 
@@ -374,135 +599,92 @@ st.caption(
 # SALARY PERCENTILES
 # ============================================================
 
-st.subheader("📈 Salary Percentiles")
-
-percentiles = [
-    0.01,
-    0.05,
-    0.25,
-    0.50,
-    0.75,
-    0.95,
-    0.99,
-]
-
-percentile_values = []
-
-for p in percentiles:
-
-    value = valid_salary[
-        "annual_salary_min_usd"
-    ].quantile(p)
-
-    percentile_values.append(
-        {
-            "Percentile": f"{int(p * 100)}th",
-            "Annual Salary (USD)": round(
-                value,
-                2,
-            ),
-        }
-    )
-
-
-percentile_df = pd.DataFrame(
-    percentile_values
+st.html(
+    """
+    <div class="section-title">📈 Salary Percentiles</div>
+    <div class="section-subtitle">
+        Reference points showing how annual minimum salaries are
+        distributed across the available salary records.
+    </div>
+    """
 )
 
-st.dataframe(
-    percentile_df,
-    use_container_width=True,
-    hide_index=True,
-)
+if not valid_salary.empty:
 
-
-# ============================================================
-# SIDEBAR FILTERS
-# ============================================================
-
-st.sidebar.header("Salary Filters")
-
-
-if "experience_level" in valid_salary.columns:
-
-    experience_options = [
-        "All"
-    ] + sorted(
-        valid_salary["experience_level"]
-        .dropna()
-        .astype(str)
-        .unique()
-        .tolist()
-    )
-
-    selected_experience = st.sidebar.selectbox(
-        "Experience Level",
-        experience_options,
-    )
-
-else:
-
-    selected_experience = "All"
-
-
-if "work_model" in valid_salary.columns:
-
-    work_options = [
-        "All"
-    ] + sorted(
-        valid_salary["work_model"]
-        .dropna()
-        .astype(str)
-        .unique()
-        .tolist()
-    )
-
-    selected_work_model = st.sidebar.selectbox(
-        "Work Model",
-        work_options,
-    )
-
-else:
-
-    selected_work_model = "All"
-
-
-# ============================================================
-# FILTERED SALARY DATA
-# ============================================================
-
-filtered_salary = valid_salary.copy()
-
-
-if (
-    selected_experience != "All"
-    and "experience_level" in filtered_salary.columns
-):
-
-    filtered_salary = filtered_salary[
-        filtered_salary["experience_level"]
-        == selected_experience
+    percentiles = [
+        .01,
+        .05,
+        .25,
+        .50,
+        .75,
+        .95,
+        .99,
     ]
 
+    percentile_values = []
 
-if (
-    selected_work_model != "All"
-    and "work_model" in filtered_salary.columns
-):
+    for p in percentiles:
 
-    filtered_salary = filtered_salary[
-        filtered_salary["work_model"]
-        == selected_work_model
-    ]
+        value = valid_salary[
+            "annual_salary_min_usd"
+        ].quantile(p)
+
+        percentile_values.append(
+            {
+                "Percentile": f"{int(p * 100)}th",
+                "Annual Salary (USD)": round(
+                    value,
+                    2,
+                ),
+            }
+        )
+
+    percentile_df = pd.DataFrame(
+        percentile_values
+    )
+
+    st.dataframe(
+        percentile_df,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+# ============================================================
+# ACTIVE FILTER
+# ============================================================
+
+filter_text = []
+
+if selected_experience != "All":
+    filter_text.append(
+        f"Experience: {selected_experience}"
+    )
+
+if selected_work_model != "All":
+    filter_text.append(
+        f"Work model: {selected_work_model}"
+    )
+
+if filter_text:
+
+    st.caption(
+        "Active filters — " + " · ".join(filter_text)
+    )
 
 
 # ============================================================
 # SALARY BY EXPERIENCE
 # ============================================================
 
-st.divider()
-
-st.subheader("🎯 Salary by Experience Level")
+st.html(
+    """
+    <div class="section-title">🎯 Salary by Experience Level</div>
+    <div class="section-subtitle">
+        Compare median annual minimum salary across experience levels.
+    </div>
+    """
+)
 
 if (
     "experience_level" in filtered_salary.columns
@@ -522,7 +704,6 @@ if (
         .reset_index()
     )
 
-    # Explicit logical order
     experience_order = [
         "Intern",
         "Entry",
@@ -563,15 +744,34 @@ if (
             "Median":
                 "Median Annual Salary (USD)",
         },
-        title="Median Salary by Experience Level",
         category_orders={
             "experience_level":
                 experience_order
         },
     )
 
+    fig_exp.update_traces(
+        hovertemplate=(
+            "<b>%{x}</b>"
+            "<br>Median salary: $%{y:,.0f}"
+            "<extra></extra>"
+        )
+    )
+
     fig_exp.update_layout(
         height=450,
+        margin=dict(l=20, r=25, t=20, b=30),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(
+            family="Inter, Arial, sans-serif",
+            color="#334155",
+        ),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
+        ),
     )
 
     st.plotly_chart(
@@ -582,13 +782,11 @@ if (
     display_experience = experience_salary.copy()
 
     display_experience["Median"] = (
-        display_experience["Median"]
-        .round(0)
+        display_experience["Median"].round(0)
     )
 
     display_experience["Average"] = (
-        display_experience["Average"]
-        .round(0)
+        display_experience["Average"].round(0)
     )
 
     st.dataframe(
@@ -597,12 +795,23 @@ if (
         hide_index=True,
     )
 
+else:
+    st.info("No salary records match the selected filters.")
+
 
 # ============================================================
 # SALARY BY WORK MODEL
 # ============================================================
 
-st.subheader("🏢 Salary by Work Model")
+st.html(
+    """
+    <div class="section-title">🏢 Salary by Work Model</div>
+    <div class="section-subtitle">
+        Compare observed median salary across remote, hybrid,
+        on-site, and unknown work arrangements.
+    </div>
+    """
+)
 
 if (
     "work_model" in filtered_salary.columns
@@ -652,19 +861,37 @@ if (
         x="work_model",
         y="Median",
         labels={
-            "work_model":
-                "Work Model",
+            "work_model": "Work Model",
             "Median":
                 "Median Annual Salary (USD)",
         },
-        title="Median Salary by Work Model",
         category_orders={
             "work_model": work_order
         },
     )
 
+    fig_work.update_traces(
+        hovertemplate=(
+            "<b>%{x}</b>"
+            "<br>Median salary: $%{y:,.0f}"
+            "<extra></extra>"
+        )
+    )
+
     fig_work.update_layout(
         height=450,
+        margin=dict(l=20, r=25, t=20, b=30),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(
+            family="Inter, Arial, sans-serif",
+            color="#334155",
+        ),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
+        ),
     )
 
     st.plotly_chart(
@@ -674,20 +901,10 @@ if (
 
 
 # ============================================================
-# SALARY BY COUNTRY
+# COUNTRY NORMALIZATION
 # ============================================================
 
-st.divider()
-
-st.subheader("🌍 Salary by Country")
-
-
-# ------------------------------------------------------------
-# Canonical country normalization
-# ------------------------------------------------------------
-
 COUNTRY_MAP = {
-    # United States
     "us": "United States",
     "usa": "United States",
     "u.s.": "United States",
@@ -696,141 +913,114 @@ COUNTRY_MAP = {
     "united states of america": "United States",
     "america": "United States",
 
-    # Canada
     "ca": "Canada",
     "can": "Canada",
     "canada": "Canada",
 
-    # United Kingdom
     "uk": "United Kingdom",
     "gb": "United Kingdom",
     "great britain": "United Kingdom",
     "england": "United Kingdom",
     "united kingdom": "United Kingdom",
 
-    # Netherlands
     "nl": "Netherlands",
     "netherlands": "Netherlands",
     "the netherlands": "Netherlands",
     "holland": "Netherlands",
 
-    # Germany
     "de": "Germany",
     "ger": "Germany",
     "germany": "Germany",
 
-    # France
     "fr": "France",
     "fra": "France",
     "france": "France",
 
-    # Australia
     "au": "Australia",
     "aus": "Australia",
     "australia": "Australia",
 
-    # India
     "in": "India",
     "ind": "India",
     "india": "India",
 
-    # Mexico
     "mx": "Mexico",
     "mex": "Mexico",
     "mexico": "Mexico",
 
-    # Spain
     "es": "Spain",
     "esp": "Spain",
     "spain": "Spain",
 
-    # Italy
     "it": "Italy",
     "ita": "Italy",
     "italy": "Italy",
 
-    # China
     "cn": "China",
     "chn": "China",
     "china": "China",
 
-    # Philippines
     "ph": "Philippines",
     "phl": "Philippines",
     "philippines": "Philippines",
 
-    # Brazil
     "br": "Brazil",
     "bra": "Brazil",
     "brazil": "Brazil",
 
-    # Malaysia
     "my": "Malaysia",
     "mys": "Malaysia",
     "malaysia": "Malaysia",
 
-    # Ireland
     "ie": "Ireland",
     "irl": "Ireland",
     "ireland": "Ireland",
 
-    # South Africa
     "za": "South Africa",
     "zaf": "South Africa",
     "south africa": "South Africa",
 
-    # Indonesia
     "id": "Indonesia",
     "idn": "Indonesia",
     "indonesia": "Indonesia",
 
-    # UAE
     "ae": "United Arab Emirates",
     "are": "United Arab Emirates",
     "uae": "United Arab Emirates",
     "united arab emirates": "United Arab Emirates",
 
-    # Switzerland
     "ch": "Switzerland",
     "che": "Switzerland",
     "switzerland": "Switzerland",
 
-    # Singapore
     "sg": "Singapore",
     "sgp": "Singapore",
     "singapore": "Singapore",
 
-    # Colombia
     "co": "Colombia",
     "col": "Colombia",
     "colombia": "Colombia",
 
-    # Greece
     "gr": "Greece",
     "grc": "Greece",
     "greece": "Greece",
 
-    # Japan
     "jp": "Japan",
     "jpn": "Japan",
     "japan": "Japan",
 
-    # Austria
     "at": "Austria",
     "aut": "Austria",
     "austria": "Austria",
 
-    # Poland
     "pl": "Poland",
     "pol": "Poland",
     "poland": "Poland",
 
-    # Lithuania
     "lt": "Lithuania",
     "ltu": "Lithuania",
     "lithuania": "Lithuania",
 
-    # Unknown
     "unknown": "Unknown",
     "nan": "Unknown",
     "none": "Unknown",
@@ -848,13 +1038,25 @@ def normalize_country(value):
     if not value:
         return "Unknown"
 
-    key = value.lower()
+    return COUNTRY_MAP.get(
+        value.lower(),
+        value,
+    )
 
-    if key in COUNTRY_MAP:
-        return COUNTRY_MAP[key]
 
-    return value
+# ============================================================
+# SALARY BY COUNTRY
+# ============================================================
 
+st.html(
+    """
+    <div class="section-title">🌍 Salary by Country</div>
+    <div class="section-subtitle">
+        Countries with at least 20 salary records are included in
+        the comparison to reduce the effect of very small groups.
+    </div>
+    """
+)
 
 if (
     "country" in filtered_salary.columns
@@ -880,7 +1082,6 @@ if (
         .reset_index()
     )
 
-    # Require enough records for a meaningful comparison
     country_salary = country_salary[
         country_salary["Jobs"] >= 20
     ]
@@ -905,20 +1106,32 @@ if (
         labels={
             "Median":
                 "Median Annual Salary (USD)",
-            "country":
-                "Country",
+            "country": "Country",
         },
-        title="Top Countries by Median Salary",
+    )
+
+    fig_country.update_traces(
+        hovertemplate=(
+            "<b>%{y}</b>"
+            "<br>Median salary: $%{x:,.0f}"
+            "<extra></extra>"
+        )
     )
 
     fig_country.update_layout(
         height=600,
-        margin=dict(
-            l=20,
-            r=20,
-            t=60,
-            b=20,
+        margin=dict(l=20, r=25, t=20, b=30),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(
+            family="Inter, Arial, sans-serif",
+            color="#334155",
         ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
+        ),
+        yaxis=dict(showgrid=False),
     )
 
     st.plotly_chart(
@@ -926,15 +1139,10 @@ if (
         use_container_width=True,
     )
 
-    # --------------------------------------------------------
-    # Country salary table
-    # --------------------------------------------------------
-
     display_country = country_salary.copy()
 
     display_country["Median"] = (
-        display_country["Median"]
-        .round(0)
+        display_country["Median"].round(0)
     )
 
     display_country = display_country.rename(
@@ -951,13 +1159,20 @@ if (
         hide_index=True,
     )
 
+
 # ============================================================
 # SALARY BY JOB ROLE
 # ============================================================
 
-st.divider()
-
-st.subheader("💼 Salary by Job Role")
+st.html(
+    """
+    <div class="section-title">💼 Salary by Job Role</div>
+    <div class="section-subtitle">
+        Compare the highest observed median salaries among roles
+        with at least 20 salary records.
+    </div>
+    """
+)
 
 role_column = None
 
@@ -1012,11 +1227,30 @@ if role_column:
             role_column:
                 "Job Role",
         },
-        title="Top Job Roles by Median Salary",
+    )
+
+    fig_role.update_traces(
+        hovertemplate=(
+            "<b>%{y}</b>"
+            "<br>Median salary: $%{x:,.0f}"
+            "<extra></extra>"
+        )
     )
 
     fig_role.update_layout(
         height=650,
+        margin=dict(l=20, r=25, t=20, b=30),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(
+            family="Inter, Arial, sans-serif",
+            color="#334155",
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#e2e8f0",
+        ),
+        yaxis=dict(showgrid=False),
     )
 
     st.plotly_chart(
@@ -1029,23 +1263,15 @@ if role_column:
 # MACHINE LEARNING MODEL
 # ============================================================
 
-st.divider()
-
-st.header("🤖 Salary Prediction Model")
-
-st.markdown(
+st.html(
     """
-    JobInsight uses machine learning to estimate annual minimum
-    salary from job characteristics such as title, industry,
-    function, employment type, work model, experience level,
-    education level, and country.
+    <div class="section-title">🤖 Salary Prediction Model</div>
+    <div class="section-subtitle">
+        JobInsight uses XGBoost regression to estimate annual minimum
+        salary from selected job characteristics.
+    </div>
     """
 )
-
-
-# ============================================================
-# MODEL METRICS
-# ============================================================
 
 metric1, metric2, metric3 = st.columns(3)
 
@@ -1064,7 +1290,6 @@ metric3.metric(
     "0.3837",
 )
 
-
 st.caption(
     "Evaluation on the held-out test set from the salary-modeling "
     "dataset. R² indicates the proportion of variance explained "
@@ -1076,7 +1301,15 @@ st.caption(
 # FEATURE IMPORTANCE
 # ============================================================
 
-st.subheader("🔍 Model Feature Importance")
+st.html(
+    """
+    <div class="section-title">🔍 Model Feature Importance</div>
+    <div class="section-subtitle">
+        Encoded features with the largest model importance values.
+        Importance indicates model contribution, not causation.
+    </div>
+    """
+)
 
 if not feature_importance.empty:
 
@@ -1104,10 +1337,7 @@ if not feature_importance.empty:
             feature_column = candidate
             break
 
-    if (
-        importance_column
-        and feature_column
-    ):
+    if importance_column and feature_column:
 
         importance_plot = feature_importance.copy()
 
@@ -1137,16 +1367,33 @@ if not feature_importance.empty:
             y=feature_column,
             orientation="h",
             labels={
-                importance_column:
-                    "Importance",
-                feature_column:
-                    "Feature",
+                importance_column: "Importance",
+                feature_column: "Feature",
             },
-            title="Top 15 Model Features",
+        )
+
+        fig_importance.update_traces(
+            hovertemplate=(
+                "<b>%{y}</b>"
+                "<br>Importance: %{x:.3f}"
+                "<extra></extra>"
+            )
         )
 
         fig_importance.update_layout(
             height=600,
+            margin=dict(l=20, r=25, t=20, b=30),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(
+                family="Inter, Arial, sans-serif",
+                color="#334155",
+            ),
+            xaxis=dict(
+                showgrid=True,
+                gridcolor="#e2e8f0",
+            ),
+            yaxis=dict(showgrid=False),
         )
 
         st.plotly_chart(
@@ -1170,13 +1417,19 @@ if not feature_importance.empty:
 # INTERACTIVE SALARY PREDICTION
 # ============================================================
 
-st.divider()
-
-st.subheader("🧮 Try a Salary Prediction")
+st.html(
+    """
+    <div class="section-title">🧮 Try a Salary Prediction</div>
+    <div class="section-subtitle">
+        Enter job characteristics and generate an estimated annual
+        minimum salary using the JobInsight XGBoost model.
+    </div>
+    """
+)
 
 st.info(
-    "Enter job characteristics below to generate an estimated "
-    "annual minimum salary using the JobInsight XGBoost model."
+    "The prediction is an estimate based on patterns in the "
+    "JobInsight salary-modeling dataset."
 )
 
 
@@ -1357,7 +1610,7 @@ def train_prediction_model():
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.20,
+        test_size=.20,
         random_state=42,
     )
 
@@ -1407,22 +1660,14 @@ if st.button(
         prediction_input = pd.DataFrame(
             [
                 {
-                    "title":
-                        prediction_title,
-                    "industry":
-                        prediction_industry,
-                    "function":
-                        prediction_function,
-                    "employment_type":
-                        prediction_employment,
-                    "work_model":
-                        prediction_work_model,
-                    "experience_level":
-                        prediction_experience,
-                    "education_level":
-                        prediction_education,
-                    "country":
-                        prediction_country,
+                    "title": prediction_title,
+                    "industry": prediction_industry,
+                    "function": prediction_function,
+                    "employment_type": prediction_employment,
+                    "work_model": prediction_work_model,
+                    "experience_level": prediction_experience,
+                    "education_level": prediction_education,
+                    "country": prediction_country,
                 }
             ]
         )
@@ -1433,12 +1678,28 @@ if st.button(
 
         prediction = max(
             0,
-            float(prediction)
+            float(prediction),
         )
 
-        st.success(
-            f"Estimated annual minimum salary: "
-            f"${prediction:,.0f}"
+        st.html(
+            f"""
+            <div class="salary-card"
+                 style="margin-top:18px;text-align:center;">
+
+                <div class="salary-card-label">
+                    Estimated Annual Minimum Salary
+                </div>
+
+                <div class="salary-card-value">
+                    ${prediction:,.0f}
+                </div>
+
+                <div class="salary-card-label">
+                    Model estimate based on JobInsight salary data
+                </div>
+
+            </div>
+            """
         )
 
         st.caption(
@@ -1451,8 +1712,6 @@ if st.button(
 # ============================================================
 # METHODOLOGY
 # ============================================================
-
-st.divider()
 
 with st.expander("📘 Salary Intelligence Methodology"):
 
@@ -1473,7 +1732,7 @@ with st.expander("📘 Salary Intelligence Methodology"):
 
         The primary advanced model is XGBoost regression.
 
-        Features include:
+        ### Features
 
         - Job title
         - Industry
@@ -1494,3 +1753,16 @@ with st.expander("📘 Salary Intelligence Methodology"):
         rather than guarantees.
         """
     )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.html(
+    """
+    <div class="footer">
+        JobInsight · Salary Intelligence · AI-Powered Job Market Analytics
+    </div>
+    """
+)
